@@ -1,0 +1,358 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		237B13331BA2AFCC001AD590 /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 237B13321BA2AFCC001AD590 /* main.cpp */; };
+		237B13411BA2B63D001AD590 /* ModelCompare.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 237B133D1BA2B63D001AD590 /* ModelCompare.cpp */; };
+		237B13421BA2B63D001AD590 /* RootUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 237B133F1BA2B63D001AD590 /* RootUtil.cpp */; };
+		237B13461BA2B7BF001AD590 /* ReweightEFT.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 237B13441BA2B7BF001AD590 /* ReweightEFT.cpp */; };
+		237B13491BA77430001AD590 /* Gzip_Stream.C in Sources */ = {isa = PBXBuildFile; fileRef = 237B13471BA77430001AD590 /* Gzip_Stream.C */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		237B132D1BA2AFCC001AD590 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		237B132F1BA2AFCC001AD590 /* ReweightEFT */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ReweightEFT; sourceTree = BUILT_PRODUCTS_DIR; };
+		237B13321BA2AFCC001AD590 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		237B13391BA2B112001AD590 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = common.h; path = ../../SherpaWeight/SherpaWeight/Source/Common/common.h; sourceTree = "<group>"; };
+		237B133D1BA2B63D001AD590 /* ModelCompare.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ModelCompare.cpp; path = ../ModelCompare/ModelCompare/ModelCompare.cpp; sourceTree = "<group>"; };
+		237B133E1BA2B63D001AD590 /* ModelCompare.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ModelCompare.h; path = ../ModelCompare/ModelCompare/ModelCompare.h; sourceTree = "<group>"; };
+		237B133F1BA2B63D001AD590 /* RootUtil.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RootUtil.cpp; path = ../ModelCompare/ModelCompare/RootUtil.cpp; sourceTree = "<group>"; };
+		237B13401BA2B63D001AD590 /* RootUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RootUtil.h; path = ../ModelCompare/ModelCompare/RootUtil.h; sourceTree = "<group>"; };
+		237B13441BA2B7BF001AD590 /* ReweightEFT.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ReweightEFT.cpp; sourceTree = "<group>"; };
+		237B13451BA2B7BF001AD590 /* ReweightEFT.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ReweightEFT.h; sourceTree = "<group>"; };
+		237B13471BA77430001AD590 /* Gzip_Stream.C */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Gzip_Stream.C; path = ../SherpaWeight/SherpaWeight/Source/Common/Gzip_Stream.C; sourceTree = "<group>"; };
+		237B13481BA77430001AD590 /* Gzip_Stream.H */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = Gzip_Stream.H; path = ../SherpaWeight/SherpaWeight/Source/Common/Gzip_Stream.H; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		237B132C1BA2AFCC001AD590 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		237B13261BA2AFCC001AD590 = {
+			isa = PBXGroup;
+			children = (
+				237B13431BA2B649001AD590 /* ModelCompare */,
+				237B13311BA2AFCC001AD590 /* ReweightEFT */,
+				237B13301BA2AFCC001AD590 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		237B13301BA2AFCC001AD590 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				237B132F1BA2AFCC001AD590 /* ReweightEFT */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		237B13311BA2AFCC001AD590 /* ReweightEFT */ = {
+			isa = PBXGroup;
+			children = (
+				237B13391BA2B112001AD590 /* common.h */,
+				237B13321BA2AFCC001AD590 /* main.cpp */,
+				237B13441BA2B7BF001AD590 /* ReweightEFT.cpp */,
+				237B13451BA2B7BF001AD590 /* ReweightEFT.h */,
+			);
+			path = ReweightEFT;
+			sourceTree = "<group>";
+		};
+		237B13431BA2B649001AD590 /* ModelCompare */ = {
+			isa = PBXGroup;
+			children = (
+				237B13471BA77430001AD590 /* Gzip_Stream.C */,
+				237B13481BA77430001AD590 /* Gzip_Stream.H */,
+				237B133D1BA2B63D001AD590 /* ModelCompare.cpp */,
+				237B133E1BA2B63D001AD590 /* ModelCompare.h */,
+				237B133F1BA2B63D001AD590 /* RootUtil.cpp */,
+				237B13401BA2B63D001AD590 /* RootUtil.h */,
+			);
+			name = ModelCompare;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		237B132E1BA2AFCC001AD590 /* ReweightEFT */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 237B13361BA2AFCC001AD590 /* Build configuration list for PBXNativeTarget "ReweightEFT" */;
+			buildPhases = (
+				237B132B1BA2AFCC001AD590 /* Sources */,
+				237B132C1BA2AFCC001AD590 /* Frameworks */,
+				237B132D1BA2AFCC001AD590 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ReweightEFT;
+			productName = ReweightEFT;
+			productReference = 237B132F1BA2AFCC001AD590 /* ReweightEFT */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		237B13271BA2AFCC001AD590 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0640;
+				ORGANIZATIONNAME = "Christopher Jacobsen";
+				TargetAttributes = {
+					237B132E1BA2AFCC001AD590 = {
+						CreatedOnToolsVersion = 6.4;
+					};
+				};
+			};
+			buildConfigurationList = 237B132A1BA2AFCC001AD590 /* Build configuration list for PBXProject "ReweightEFT" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 237B13261BA2AFCC001AD590;
+			productRefGroup = 237B13301BA2AFCC001AD590 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				237B132E1BA2AFCC001AD590 /* ReweightEFT */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		237B132B1BA2AFCC001AD590 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				237B13491BA77430001AD590 /* Gzip_Stream.C in Sources */,
+				237B13331BA2AFCC001AD590 /* main.cpp in Sources */,
+				237B13421BA2B63D001AD590 /* RootUtil.cpp in Sources */,
+				237B13461BA2B7BF001AD590 /* ReweightEFT.cpp in Sources */,
+				237B13411BA2B63D001AD590 /* ModelCompare.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		237B13341BA2AFCC001AD590 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/include/root,
+					/usr/local/include,
+				);
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/lib/root,
+					/usr/local/lib,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(OTHER_CFLAGS)",
+					"-pthread",
+					"-m64",
+					"-isystem",
+					/usr/local/include/root,
+					"-isystem",
+					/usr/local/include,
+				);
+				OTHER_LDFLAGS = (
+					"-lCore",
+					"-lCint",
+					"-lRIO",
+					"-lNet",
+					"-lHist",
+					"-lHistPainter",
+					"-lGraf",
+					"-lGraf3d",
+					"-lGpad",
+					"-lTree",
+					"-lRint",
+					"-lPostscript",
+					"-lMatrix",
+					"-lPhysics",
+					"-lMathCore",
+					"-lThread",
+					"-lpthread",
+					"-lm",
+					"-ldl",
+					"-lHepMC",
+					"-lz",
+				);
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		237B13351BA2AFCC001AD590 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					/usr/local/include/root,
+					/usr/local/include,
+				);
+				LIBRARY_SEARCH_PATHS = (
+					/usr/local/lib/root,
+					/usr/local/lib,
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				OTHER_CPLUSPLUSFLAGS = (
+					"$(OTHER_CFLAGS)",
+					"-pthread",
+					"-m64",
+					"-isystem",
+					/usr/local/include/root,
+					"-isystem",
+					/usr/local/include,
+				);
+				OTHER_LDFLAGS = (
+					"-lCore",
+					"-lCint",
+					"-lRIO",
+					"-lNet",
+					"-lHist",
+					"-lHistPainter",
+					"-lGraf",
+					"-lGraf3d",
+					"-lGpad",
+					"-lTree",
+					"-lRint",
+					"-lPostscript",
+					"-lMatrix",
+					"-lPhysics",
+					"-lMathCore",
+					"-lThread",
+					"-lpthread",
+					"-lm",
+					"-ldl",
+					"-lHepMC",
+					"-lz",
+				);
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		237B13371BA2AFCC001AD590 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		237B13381BA2AFCC001AD590 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		237B132A1BA2AFCC001AD590 /* Build configuration list for PBXProject "ReweightEFT" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				237B13341BA2AFCC001AD590 /* Debug */,
+				237B13351BA2AFCC001AD590 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		237B13361BA2AFCC001AD590 /* Build configuration list for PBXNativeTarget "ReweightEFT" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				237B13371BA2AFCC001AD590 /* Debug */,
+				237B13381BA2AFCC001AD590 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 237B13271BA2AFCC001AD590 /* Project object */;
+}
