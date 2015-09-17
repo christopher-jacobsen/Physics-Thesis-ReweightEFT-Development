@@ -14,10 +14,15 @@
 
 static const ModelCompare::ObservableVector Observables1 =
 {
-    { "PTZ", "P_{T}(Z)",  300,     0, 1500, "P_{T}(Z) [GeV/c]", "Events per 5 GeV/c",       [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistPT( s, h, w, 24);     } },
-    { "MWZ", "M(WZ)",     250,     0, 3750, "M(WZ) [GeV/c^2]",  "Events per 15 GeV/c^2",    [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistM2( s, h, w, 24, 23); } },
-    { "ETZ", "#eta(Z)",   100,   -10,   10, "#eta(Z)",          "Events per bin",           [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistEta(s, h, w, 24);     } },
-    { "PHZ", "#phi(Z)",   100, -M_PI, M_PI, "#phi(Z)",          "Events per bin",           [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistPhi(s, h, w, 24);     } },
+  //{ "PTZ", "P_{T}(Z)",  300,     0, 1500, "P_{T}(Z) [GeV/c]", "Events per 5 GeV/c",       [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistPT(  s, h, w, 24);     } },
+  //{ "MWZ", "M(WZ)",     250,     0, 3750, "M(WZ) [GeV/c^2]",  "Events per 15 GeV/c^2",    [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistMass(s, h, w, 24, 23); } },
+  //{ "PTZ", "P_{T}(Z)",  100,     0,  500, "P_{T}(Z) [GeV/c]", "Events per 5 GeV/c",       [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistPT(  s, h, w, 24);     } },
+  //{ "MWZ", "M(WZ)",     100,     0, 1500, "M(WZ) [GeV/c^2]",  "Events per 15 GeV/c^2",    [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistMass(s, h, w, 24, 23); } },
+    { "PTZ", "P_{T}(Z)",  150,     0,  750, "P_{T}(Z) [GeV/c]", "Events per 5 GeV/c",       [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistPT(  s, h, w, 24);     } },
+    { "MWZ", "M(WZ)",     140,     0, 2800, "M(WZ) [GeV/c^2]",  "Events per 20 GeV/c^2",    [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistMass(s, h, w, 24, 23); } },
+    { "RAZ", "Y(Z)",      100,    -5,    5, "Y(Z)",             "Events per bin",           [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistRap( s, h, w, 24);     } },
+    { "ETZ", "#eta(Z)",   100,   -10,   10, "#eta(Z)",          "Events per bin",           [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistEta( s, h, w, 24);     } },
+    { "PHZ", "#phi(Z)",   100, -M_PI, M_PI, "#phi(Z)",          "Events per bin",           [](const HepMC::GenVertex & s, TH1D & h, double w) { RootUtil::FillHistPhi( s, h, w, 24);     } },
 };
 
 ////////////////////////////////////////////////////////////////////////////////
