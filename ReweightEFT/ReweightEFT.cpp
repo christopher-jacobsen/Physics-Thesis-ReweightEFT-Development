@@ -181,17 +181,21 @@ void CalcEvalVector( const CStringVector & coefNames, const ParamVector & params
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
 void ScaleToLuminosity( double luminosity, const TH1DVector & hists, const ModelCompare::ModelFile & eventFile, bool bApplyCrossSectionError = false )
 {
-    double scale    = luminosity * eventFile.crossSection * 1000 / eventFile.crossSectionEvents;
-    double relError = eventFile.crossSectionError / eventFile.crossSection;
+    double scale = luminosity * eventFile.crossSection * 1000 / eventFile.crossSectionEvents;
 
     for (TH1D * pHist : hists)
     {
+        LogMsgInfo( "Scaling %hs with %g", FMT_HS(pHist->GetName()), FMT_F(scale) );
+
         pHist->Scale( scale );
 
         if (bApplyCrossSectionError)
         {
+            double relError = eventFile.crossSectionError / eventFile.crossSection;
+
             for (Int_t bin = 0; bin <= pHist->GetNbinsX() + 1; ++bin)
             {
                 Double_t binContent = pHist->GetBinContent(bin);
@@ -207,6 +211,53 @@ void ScaleToLuminosity( double luminosity, const TH1DVector & hists, const Model
         }
     }
 }
+
+#if 0
+////////////////////////////////////////////////////////////////////////////////
+void TrimHistNearZero( TH1D & hist )
+{
+    //const Double_t epsilon = std::numeric_limits<Double_t>::epsilon();
+
+    bool bTrimmed = false;
+
+    Int_t nBins = hist.GetNbinsX();
+    for (Int_t bin = 0; bin <= nBins + 1; ++bin)  // include under/overflow bins
+    {
+        Double_t value = std::abs( hist.GetBinContent(bin) );  // handle both positive & negative
+        if ((value > 0) && (value < 1))
+        {
+            Double_t error       = hist.GetBinError(bin);
+            Double_t upperSigma5 = value + 5 * error;
+            Double_t lowerSigma5 = value - 5 * error;
+
+            // if (value + 5 sigma < 1) && (value - 5sigma < 0))
+            if ((upperSigma5 < 1) && (lowerSigma5 < 0))
+            {
+                // extremely unlikely this is a 1 and highly likely this is a zero
+
+                LogMsgInfo( "%hs setting bin %i: %g (±%g) to 0", FMT_HS(hist.GetName()), FMT_I(bin), FMT_F(value), FMT_F(error) );
+
+                hist.SetBinContent( bin, 0 );
+                hist.SetBinError(   bin, 0 );
+                bTrimmed = true;
+            }
+        }
+    }
+
+    if (bTrimmed)
+        hist.ResetStats();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void TrimHistNearZero( const TH1DVector & hists )
+{
+    for (TH1D * pHist : hists)
+    {
+        if (pHist)
+            TrimHistNearZero( *pHist );
+    }
+}
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 TH1D * CreateReweightHist( const ConstTH1DVector & coefData, const std::vector<double> & coefEval )
@@ -250,7 +301,7 @@ TH1D * CreateReweightFactor( const ConstTH1DVector & coefData, const std::vector
 ////////////////////////////////////////////////////////////////////////////////
 void LogMsgHistEffectiveEntries( const TH1D & hist )
 {
-    LogMsgInfo( "%hs: entries = %.6g, eff. entries = %.6g, sum bins = %.6g",
+    LogMsgInfo( "%hs: entries = %g, eff. entries = %g, sum bins = %g",
         FMT_HS(hist.GetName()),
         FMT_F(hist.GetEntries()), FMT_F(hist.GetEffectiveEntries()),
         FMT_F(hist.GetSumOfWeights()) );
@@ -295,6 +346,7 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
         // scale to 1 fb^1
         ScaleToLuminosity( 1.0, targetData, targetFile );
 
+        LogMsgUnderOverflow( ToConstTH1DVector(targetData) );
         LogMsgHistEffectiveEntries( ToConstTH1DVector(targetData) );
 
         WriteHists( upOutputFile.get(), targetData );  // output file takes ownership of histograms
@@ -314,6 +366,7 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
         {
             ScaleToLuminosity( 1, sourceData, sourceFile );  // scale to 1 fb^-1
 
+            LogMsgUnderOverflow( ToConstTH1DVector(sourceData) );
             LogMsgHistEffectiveEntries( ToConstTH1DVector(sourceData) );
 
             WriteHists( upOutputFile.get(), sourceData );
@@ -360,7 +413,7 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
 
         reweightTarget.Multiply( upReweightFactor.get() );
 
-        TH1D * pOldReweight = CreateReweightHist( coefData, targetEval );
+        //TH1D * pOldReweight = CreateReweightHist( coefData, targetEval );
 
         LogMsgInfo( "reweightFactor:" );
         LogMsgHistEffectiveEntries(*upReweightFactor);
@@ -368,16 +421,33 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
         LogMsgInfo( "reweightTarget:" );
         LogMsgHistEffectiveEntries(reweightTarget);
 
-        LogMsgInfo( "oldReweightTarget:" );
-        LogMsgHistEffectiveEntries(*pOldReweight);
+        /*
+        if (obsIndex == 0)
+        {
+            TH1D *  pHist   = nullptr;
+            Int_t   bin     = 221;
+
+            pHist = sourceData[obsIndex];
+            LogMsgInfo( "%hs bin %i: %g (±%g)", FMT_HS(pHist->GetName()), FMT_I(bin), FMT_F(pHist->GetBinContent(bin)), FMT_F(pHist->GetBinError(bin)) );
+
+            pHist = upReweightFactor.get();
+            LogMsgInfo( "%hs bin %i: %g (±%g)", FMT_HS(pHist->GetName()), FMT_I(bin), FMT_F(pHist->GetBinContent(bin)), FMT_F(pHist->GetBinError(bin)) );
+        }
+        */
+
+        // TODO: write reweight target (needs name and title)
+
+        //LogMsgInfo( "oldReweightTarget:" );
+        //LogMsgHistEffectiveEntries(*pOldReweight);
 
         ConstTH1DVector                 obsData = { targetData[obsIndex], &reweightTarget };
         TH1DVector                      obsComp;
         ModelCompare::ModelFileVector   models = { targetFile, sourceFile };
 
+        /*
         if (obsIndex == 0)
         {
-            const TH1D & target   = *pOldReweight; //*obsData[0];
+            const TH1D & target   = *obsData[0];
             const TH1D & reweight = *obsData[1];
 
             LogMsgInfo( "--------- target -----------" );
@@ -395,6 +465,7 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
                             FMT_F(reweight.GetBinError(i) / target.GetBinError(i)) );
             }
         }
+        */
 
         ModelCompare::CalculateCompareHists( observables[obsIndex], obsData, obsComp, models, { kBlue, kRed } );
 
