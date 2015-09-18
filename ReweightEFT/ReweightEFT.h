@@ -29,6 +29,10 @@ typedef std::vector<Parameter> ParamVector;
 
 ////////////////////////////////////////////////////////////////////////////////
 
+double GetObsRelCoef( const HepMC::GenVertex & signal, const char * coefName );
+
+void FillHistRelCoef( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
+
 void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVector & observables,
                   const ModelCompare::ModelFile & eventSource, const ModelCompare::ModelFile & eventTarget,
                   const ParamVector &             sourceParam, const ParamVector &             targetParam,

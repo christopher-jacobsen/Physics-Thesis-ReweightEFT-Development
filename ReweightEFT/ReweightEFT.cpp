@@ -29,6 +29,36 @@ namespace ReweightEFT
 {
 
 ////////////////////////////////////////////////////////////////////////////////
+double GetObsRelCoef( const HepMC::GenVertex & signal, const char * coefName )
+{
+    const HepMC::GenEvent * pEvent = signal.parent_event();
+    if (!pEvent)
+        ThrowError( "Signal has no parent event" );
+
+    const HepMC::WeightContainer & weights = pEvent->weights();
+
+    if (!weights.has_key( coefName ))
+        ThrowError( "Coefficient " + std::string(coefName) + " not found in event." );
+    if (!weights.has_key( "F_0_0" ))
+        ThrowError( "Coefficient F_0_0 not found in event." );
+
+    double coefWeight = weights[coefName];
+    double coefBase   = weights["F_0_0"];
+
+    if (coefBase == 0)
+        ThrowError( "Coefficient F_0_0 is zero" );
+
+    double result = coefWeight / coefBase;
+    return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void FillHistRelCoef( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName )
+{
+    hist.Fill( GetObsRelCoef( signal, coefName ), weight );
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void LoadCoefHistData( const ModelCompare::ModelFile & eventFile, const ModelCompare::ObservableVector & observables,
                        const CStringVector & coefNames, const std::vector<double> & coefEval,
                        TH1DVector & eventData, std::vector<TH1DVector> & coefHists )
@@ -94,7 +124,7 @@ void LoadCoefHistData( const ModelCompare::ModelFile & eventFile, const ModelCom
             for ( const std::string name : coefNames )
             {
                 if (!weights.has_key(name))
-                    ThrowError( "Coefficient " + name + "not found in event." );
+                    ThrowError( "Coefficient " + name + " not found in event." );
                 double w = weights[name];
                 coefFactors.push_back(w);
             }
@@ -368,7 +398,8 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
 
             LogMsgHistEffectiveEntries( ToConstTH1DVector(coefData) );
 
-            WriteHists( upOutputFile.get(), coefData );
+            // uncomment to save coefficent hists to file
+            // WriteHists( upOutputFile.get(), coefData );
         }
     }
 

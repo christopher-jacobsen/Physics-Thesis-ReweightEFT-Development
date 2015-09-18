@@ -10,6 +10,8 @@
 #include "ModelCompare.h"
 #include "common.h"
 
+using namespace ReweightEFT;
+
 ////////////////////////////////////////////////////////////////////////////////
 
 #define OBSFILL [](TH1D & h, double w, const HepMC::GenVertex & s)
@@ -25,19 +27,28 @@ static const ModelCompare::ObservableVector Observables1 =
     { "RAZ", "Y(Z)",      100,    -5,    5, "Y(Z)",             "Events per bin",           OBSFILL{ RootUtil::FillHistRap( h, w, s, 24);     } },
     { "ETZ", "#eta(Z)",   100,   -10,   10, "#eta(Z)",          "Events per bin",           OBSFILL{ RootUtil::FillHistEta( h, w, s, 24);     } },
     { "PHZ", "#phi(Z)",   100, -M_PI, M_PI, "#phi(Z)",          "Events per bin",           OBSFILL{ RootUtil::FillHistPhi( h, w, s, 24);     } },
+
+    { "cWWW_O1",    "O_{1}(cWWW)",  1000, -6E4,  7E3,    "O_{1}(cWWW)",   "Events per bin",  OBSFILL{ FillHistRelCoef(h, w, s, "F_0_1_ocWWW"); } },
+    { "cWWW_O2",    "O_{2}(cWWW)",  1000,  0,   2E12,    "O_{2}(cWWW)",   "Events per bin",  OBSFILL{ FillHistRelCoef(h, w, s, "F_1_1_ocWWW"); } },
+
+    { "cW_O1",      "O_{1}(cW)",    1000, -2E6,  2E4,    "O_{1}(cW)",     "Events per bin",  OBSFILL{ FillHistRelCoef(h, w, s, "F_0_2_ocW");   } },
+    { "cW_O2",      "O_{2}(cW)",    1000,  0,   6E11,    "O_{2}(cW)",     "Events per bin",  OBSFILL{ FillHistRelCoef(h, w, s, "F_2_2_ocW");   } },
+
+    { "cB_O1",      "O_{1}(cB)",    1000, -8E2, 5E3,     "O_{1}(cB)",     "Events per bin",  OBSFILL{ FillHistRelCoef(h, w, s, "F_0_3_ocB");   } },
+    { "cB_O2",      "O_{2}(cB)",    1000,  0,   2E8,     "O_{2}(cB)",     "Events per bin",  OBSFILL{ FillHistRelCoef(h, w, s, "F_3_3_ocB");   } },
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 
 static const ModelCompare::ModelFileVector Models_1E4 =
 {
-    { "events/SM_220_1E4.hepmc2g.gz",           "SM_220",       "SM (2.2.0)",   18.2613, 0.154079, 10000 },
+    { "weight/SM_220_weight_1E4.hepmc2g.gz",    "SM_220",       "SM (2.2.0)",   18.2613, 0.154079, 10000 },
     { "weight/EFT_all_weight_1E4.hepmc2g.gz",   "EFT_all",      "EFT (all)",    42.9091, 0.379962, 10000 },
 };
 
 static const ModelCompare::ModelFileVector Models_1E6 =
 {
-    { "events/SM_220_1E6.hepmc2g.gz",           "SM_220",       "SM (2.2.0)",   18.5537, 0.0156025, 1000000 },
+    { "weight/SM_220_weight_1E6.hepmc2g.gz",    "SM_220",       "SM (2.2.0)",   18.5537, 0.0156025, 1000000 },
     { "weight/EFT_all_weight_1E6.hepmc2g.gz",   "EFT_all",      "EFT (all)",    42.8051, 0.0379205, 1000000 },
 };
 
