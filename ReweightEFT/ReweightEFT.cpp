@@ -116,30 +116,18 @@ void LoadCoefHistData( const ModelCompare::ModelFile & eventFile, const ModelCom
         auto itrCoefObs = coefHists.cbegin();
         for ( const ModelCompare::Observable & obs : observables )
         {
-            obs.fillFunction( signal, **itrData++, 1 );
+            obs.fillFunction( **itrData++, 1, signal );
 
             auto itrCoef = (*itrCoefObs++).cbegin();
             for  ( double cf : coefFactors )
             {
                 double w = cf / evalME;
-                obs.fillFunction( signal, **itrCoef++, w );
+                obs.fillFunction( **itrCoef++, w, signal );
             }
         }
     };
 
     LoadEvents( eventFile.fileName, FillFunc );
-
-    /*
-    // log underflow/overflow
-
-    for (const auto & outer : hists)
-    {
-        for (const auto & inner : outer)
-        {
-            LogMsgUnderOverflow( *inner );
-        }
-    }
-    */
 }
 
 ////////////////////////////////////////////////////////////////////////////////
