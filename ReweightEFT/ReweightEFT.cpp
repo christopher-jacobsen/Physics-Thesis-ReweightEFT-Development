@@ -78,12 +78,7 @@ void LoadCoefHistData( const ModelCompare::ModelFile & eventFile, const ModelCom
     {
         // create event data histograms
         {
-            TH1D * pHist = new TH1D( (std::string(eventFile.modelName) + "_" + obs.name).c_str(),
-                                     (std::string(eventFile.modelTitle) + " - " + obs.title).c_str(),
-                                     obs.nBins, obs.min, obs.max );
-
-            SetupHist( *pHist, obs.xAxisTitle, obs.yAxisTitle );
-
+            TH1D * pHist = obs.MakeHist( eventFile.modelName, eventFile.modelTitle );
             eventData.push_back( pHist );
         }
 
@@ -93,12 +88,7 @@ void LoadCoefHistData( const ModelCompare::ModelFile & eventFile, const ModelCom
 
             for ( const char * coefName : coefNames )
             {
-                TH1D * pHist = new TH1D( (std::string(eventFile.modelName) + "_" + std::string(obs.name) + "_" + coefName).c_str(),
-                                         (std::string(eventFile.modelTitle) + " - " + obs.title + " - " + coefName).c_str(),
-                                         obs.nBins, obs.min, obs.max );
-
-                SetupHist( *pHist, obs.xAxisTitle, obs.yAxisTitle );
-
+                TH1D * pHist = obs.MakeHist( eventFile.modelName, eventFile.modelTitle, coefName, coefName );
                 coefData.push_back(pHist);
             }
 
@@ -280,8 +270,8 @@ void TrimHistNearZero( const TH1DVector & hists )
 ////////////////////////////////////////////////////////////////////////////////
 TH1D * CreateReweightHist( const ConstTH1DVector & coefData, const std::vector<double> & coefEval )
 {
-    TH1D * pHist = new TH1D( *coefData[0] );
-    pHist->SetDirectory(nullptr);
+    TH1D * pHist = (TH1D *)coefData[0]->Clone();    // polymorphic clone
+    pHist->SetDirectory( nullptr);                  // ensure not owned by any directory
 
     pHist->Scale( coefEval[0] );
 
@@ -294,26 +284,85 @@ TH1D * CreateReweightHist( const ConstTH1DVector & coefData, const std::vector<d
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+TH1D * ConvertTProfileToTH1D( TH1D * pProfile, bool bDeleteProfile )
+{
+    if (!pProfile->InheritsFrom(TProfile::Class()))
+        return pProfile;
+
+    TH1D * pHist = ((TProfile *)pProfile)->ProjectionX();
+
+    if (bDeleteProfile)
+        delete pProfile;
+
+    return pHist;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 TH1D * CreateReweightFactor( const ConstTH1DVector & coefData, const std::vector<double> & evalNum, const std::vector<double> & evalDen, bool bClearError = false )
 {
-    TH1D * pHist    = CreateReweightHist( coefData, evalNum );
-    TH1D * pHistDen = CreateReweightHist( coefData, evalDen );
+    TH1D * pHistNum = CreateReweightHist( coefData, evalNum );  // can be TH1D or TProfile
+    TH1D * pHistDen = CreateReweightHist( coefData, evalDen );  // can be TH1D or TProfile
 
-    pHist->Divide( pHistDen );
+    pHistNum = ConvertTProfileToTH1D( pHistNum, true );
+    pHistDen = ConvertTProfileToTH1D( pHistDen, true );
+
+    pHistNum->Divide( pHistDen );
 
     delete pHistDen;
 
     if (bClearError)
     {
-        for (Int_t bin = 0; bin <= pHist->GetNbinsX() + 1; ++bin)
+        Int_t nBins = pHistNum->GetNbinsX();
+        for (Int_t bin = 0; bin <= nBins + 1; ++bin)
         {
-            pHist->SetBinError(bin, 0);
+            pHistNum->SetBinError(bin, 0);
         }
 
-        pHist->ResetStats();    // force recalculation of sumw2
+        pHistNum->ResetStats();    // force recalculation of sumw2
     }
 
-    return pHist;
+    return pHistNum;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void ApplyReweightFactor( TH1D & target, const TH1D & reweightFactor )
+{
+    // Multiply each bin in target by a corresponding reweight factor.
+    // Do not use the reweight factor error to error propagate.
+    // Handle both TH1D and TProfile.
+
+    // Note: For TH1D, could use target.Multiply( reweightFactor) if errors in reweightFactor are zero.
+    //       However, this does not work for TProfile, where Multiply is not supported.
+    // Note: The following code is based upon TProfile::Scale and TH1D::Scale
+
+    //LogMsgInfo( "------ reweightFactor (before) ------" );
+    //reweightFactor.Print("all");
+
+    //LogMsgInfo( "------ target (before) ------" );
+    //LogMsgHistStats( target );
+    //target.Print("all");
+
+    Int_t nSize = reweightFactor.GetSize();  // includes under/overflow
+
+    if ((nSize != target.GetSize()) || (nSize != target.GetSumw2N()))
+        ThrowError( "ApplyReweightFactor: bins mismatch between reweight factor and target histograms." );
+
+    Double_t * targetContent = target.GetArray();
+    Double_t * targetSumw2   = target.GetSumw2()->GetArray();
+
+    for (Int_t bin = 0; bin < nSize; ++bin)  // include under/overflow
+    {
+        Double_t factor = reweightFactor.GetBinContent(bin);
+
+        targetContent[bin] *= factor;
+        targetSumw2[bin]   *= factor * factor;
+    }
+
+    target.ResetStats();
+
+    //LogMsgInfo( "------ target (after) ------" );
+    //LogMsgHistStats( target );
+    //target.Print("all");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -364,7 +413,7 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
         // scale to 1 fb^1
         ScaleToLuminosity( 1.0, targetData, targetFile );
 
-        LogMsgUnderOverflow( ToConstTH1DVector(targetData) );
+        LogMsgHistUnderOverflow( ToConstTH1DVector(targetData) );
         LogMsgHistEffectiveEntries( ToConstTH1DVector(targetData) );
 
         WriteHists( upOutputFile.get(), targetData );  // output file takes ownership of histograms
@@ -384,7 +433,7 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
         {
             ScaleToLuminosity( 1, sourceData, sourceFile );  // scale to 1 fb^-1
 
-            LogMsgUnderOverflow( ToConstTH1DVector(sourceData) );
+            LogMsgHistUnderOverflow( ToConstTH1DVector(sourceData) );
             LogMsgHistEffectiveEntries( ToConstTH1DVector(sourceData) );
 
             WriteHists( upOutputFile.get(), sourceData );
@@ -427,10 +476,10 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
         // get the reweight factor, with errors zeroed
         std::unique_ptr<TH1D> upReweightFactor( CreateReweightFactor( coefData, targetEval,  sourceEval, true ) );
 
-        TH1D reweightTarget( *sourceData[obsIndex] );
-        reweightTarget.SetDirectory(nullptr);
+        std::unique_ptr<TH1D> upReweightTarget( (TH1D *)sourceData[obsIndex]->Clone() );    // polymorphic clone
+        upReweightTarget->SetDirectory( nullptr );                                          // ensure not owned by any directory
 
-        reweightTarget.Multiply( upReweightFactor.get() );
+        ApplyReweightFactor( *upReweightTarget, *upReweightFactor );
 
         //TH1D * pOldReweight = CreateReweightHist( coefData, targetEval );
 
@@ -438,7 +487,7 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
         LogMsgHistEffectiveEntries(*upReweightFactor);
 
         LogMsgInfo( "reweightTarget:" );
-        LogMsgHistEffectiveEntries(reweightTarget);
+        LogMsgHistEffectiveEntries(*upReweightTarget);
 
         /*
         if (obsIndex == 0)
@@ -459,7 +508,7 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
         //LogMsgInfo( "oldReweightTarget:" );
         //LogMsgHistEffectiveEntries(*pOldReweight);
 
-        ConstTH1DVector                 obsData = { targetData[obsIndex], &reweightTarget };
+        ConstTH1DVector                 obsData = { targetData[obsIndex], upReweightTarget.get() };
         TH1DVector                      obsComp;
         ModelCompare::ModelFileVector   models = { targetFile, sourceFile };
 
