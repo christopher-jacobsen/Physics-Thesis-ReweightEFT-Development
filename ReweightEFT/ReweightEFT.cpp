@@ -13,6 +13,7 @@
 // Root includes
 #include <TFile.h>
 #include <TH1.h>
+#include <TProfile.h>
 
 // HepMC includes
 #include <HepMC/GenEvent.h>
@@ -29,7 +30,26 @@ namespace ReweightEFT
 {
 
 ////////////////////////////////////////////////////////////////////////////////
-double GetObsRelCoef( const HepMC::GenVertex & signal, const char * coefName )
+double GetObsSqrtS( const HepMC::GenVertex & signal )
+{
+    TLorentzVector total;
+
+    auto itrPart = signal.particles_in_const_begin();
+    auto endPart = signal.particles_in_const_end();
+    for ( ; itrPart != endPart; ++itrPart)
+    {
+        const HepMC::GenParticle * pPart = *itrPart;
+
+        TLorentzVector vec = ToLorentz( pPart->momentum() );
+
+        total += vec;
+    }
+
+    return total.M();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+double GetObsOpt( const HepMC::GenVertex & signal, const char * coefName )
 {
     const HepMC::GenEvent * pEvent = signal.parent_event();
     if (!pEvent)
@@ -53,10 +73,49 @@ double GetObsRelCoef( const HepMC::GenVertex & signal, const char * coefName )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void FillHistRelCoef( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName )
+void FillHistSqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal )
 {
-    hist.Fill( GetObsRelCoef( signal, coefName ), weight );
+    hist.Fill( GetObsSqrtS( signal ), weight );
 }
+
+////////////////////////////////////////////////////////////////////////////////
+void FillHistOpt( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName )
+{
+    hist.Fill( GetObsOpt( signal, coefName ), weight );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void FillHistOpt_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName )
+{
+    TProfile * pProfile = dynamic_cast<TProfile *>( &hist );
+    if (!pProfile)
+        ThrowError( "FillHistRelCoef_SqrtS requires a TProfile" );
+
+    double opt    = GetObsOpt(   signal, coefName );
+    double sqrt_s = GetObsSqrtS( signal );
+
+    pProfile->Fill( sqrt_s, opt, weight );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void FillHistO2divS2_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName )
+{
+    TProfile * pProfile = dynamic_cast<TProfile *>( &hist );
+    if (!pProfile)
+        ThrowError( "FillHistRelCoef_SqrtS requires a TProfile" );
+
+    double opt    = GetObsOpt(   signal, coefName );
+    double sqrt_s = GetObsSqrtS( signal );
+    double s2     = sqrt_s * sqrt_s * sqrt_s * sqrt_s;
+
+    if (s2 == 0.0)
+        ThrowError( "s^2 is zero" );
+
+    double y = opt / s2;
+
+    pProfile->Fill( sqrt_s, y, weight );
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 void LoadCoefHistData( const ModelCompare::ModelFile & eventFile, const ModelCompare::ObservableVector & observables,

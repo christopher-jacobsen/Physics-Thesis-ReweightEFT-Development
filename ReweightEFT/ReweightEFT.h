@@ -29,9 +29,15 @@ typedef std::vector<Parameter> ParamVector;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-double GetObsRelCoef( const HepMC::GenVertex & signal, const char * coefName );
+double GetObsSqrtS( const HepMC::GenVertex & signal );
+double GetObsOpt(   const HepMC::GenVertex & signal, const char * coefName );
 
-void FillHistRelCoef( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
+void FillHistSqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal );
+void FillHistOpt(   TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
+
+void FillHistOpt_vs_sqrtS(     TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
+void FillHistO2divS2_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
+
 
 void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVector & observables,
                   const ModelCompare::ModelFile & eventSource, const ModelCompare::ModelFile & eventTarget,
