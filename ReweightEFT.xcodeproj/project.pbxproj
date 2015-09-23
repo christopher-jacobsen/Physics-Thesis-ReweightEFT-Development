@@ -29,7 +29,7 @@
 /* Begin PBXFileReference section */
 		237B132F1BA2AFCC001AD590 /* ReweightEFT */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ReweightEFT; sourceTree = BUILT_PRODUCTS_DIR; };
 		237B13321BA2AFCC001AD590 /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
-		237B13391BA2B112001AD590 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = common.h; path = ../../SherpaWeight/SherpaWeight/Source/Common/common.h; sourceTree = "<group>"; };
+		237B13391BA2B112001AD590 /* common.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = common.h; path = ../SherpaWeight/SherpaWeight/Source/Common/common.h; sourceTree = "<group>"; };
 		237B133D1BA2B63D001AD590 /* ModelCompare.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ModelCompare.cpp; path = ../ModelCompare/ModelCompare/ModelCompare.cpp; sourceTree = "<group>"; };
 		237B133E1BA2B63D001AD590 /* ModelCompare.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ModelCompare.h; path = ../ModelCompare/ModelCompare/ModelCompare.h; sourceTree = "<group>"; };
 		237B133F1BA2B63D001AD590 /* RootUtil.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RootUtil.cpp; path = ../ModelCompare/ModelCompare/RootUtil.cpp; sourceTree = "<group>"; };
@@ -54,6 +54,7 @@
 		237B13261BA2AFCC001AD590 = {
 			isa = PBXGroup;
 			children = (
+				237B13771BB32FBE001AD590 /* SherpaWeight */,
 				237B13431BA2B649001AD590 /* ModelCompare */,
 				237B13311BA2AFCC001AD590 /* ReweightEFT */,
 				237B13301BA2AFCC001AD590 /* Products */,
@@ -71,10 +72,9 @@
 		237B13311BA2AFCC001AD590 /* ReweightEFT */ = {
 			isa = PBXGroup;
 			children = (
-				237B13391BA2B112001AD590 /* common.h */,
-				237B13321BA2AFCC001AD590 /* main.cpp */,
 				237B13441BA2B7BF001AD590 /* ReweightEFT.cpp */,
 				237B13451BA2B7BF001AD590 /* ReweightEFT.h */,
+				237B13321BA2AFCC001AD590 /* main.cpp */,
 			);
 			path = ReweightEFT;
 			sourceTree = "<group>";
@@ -82,14 +82,22 @@
 		237B13431BA2B649001AD590 /* ModelCompare */ = {
 			isa = PBXGroup;
 			children = (
-				237B13471BA77430001AD590 /* Gzip_Stream.C */,
-				237B13481BA77430001AD590 /* Gzip_Stream.H */,
 				237B133D1BA2B63D001AD590 /* ModelCompare.cpp */,
 				237B133E1BA2B63D001AD590 /* ModelCompare.h */,
 				237B133F1BA2B63D001AD590 /* RootUtil.cpp */,
 				237B13401BA2B63D001AD590 /* RootUtil.h */,
 			);
 			name = ModelCompare;
+			sourceTree = "<group>";
+		};
+		237B13771BB32FBE001AD590 /* SherpaWeight */ = {
+			isa = PBXGroup;
+			children = (
+				237B13391BA2B112001AD590 /* common.h */,
+				237B13471BA77430001AD590 /* Gzip_Stream.C */,
+				237B13481BA77430001AD590 /* Gzip_Stream.H */,
+			);
+			name = SherpaWeight;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
