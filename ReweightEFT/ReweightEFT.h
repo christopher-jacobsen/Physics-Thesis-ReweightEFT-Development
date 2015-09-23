@@ -39,10 +39,25 @@ void FillHistOpt_vs_sqrtS(     TH1D & hist, double weight, const HepMC::GenVerte
 void FillHistO2divS2_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
 
 
-void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVector & observables,
-                  const ModelCompare::ModelFile & eventSource, const ModelCompare::ModelFile & eventTarget,
-                  const ParamVector &             sourceParam, const ParamVector &             targetParam,
-                  const RootUtil::CStringVector & coefNames );
+////////////////////////////////////////////////////////////////////////////////
+
+void LoadReweightFiles( // inputs:
+                        const ModelCompare::ObservableVector & observables,
+                        const RootUtil::CStringVector & coefNames,
+                        const ModelCompare::ModelFile & targetFile,
+                        const ModelCompare::ModelFile & sourceFile, const ParamVector & sourceParam,
+                        // outputs:
+                        RootUtil::TH1DVector &              targetData,     // targetData[observable]
+                        RootUtil::TH1DVector &              sourceData,     // sourceData[observable]
+                        std::vector<RootUtil::TH1DVector> & sourceCoefs,    // sourceCoefs[observable][coefficient]
+                        std::vector<double> &               sourceEval      // sourceEval[coefficient]
+                        );
+
+void ReweightEFT( const char * outputFileName,
+                  const ModelCompare::ObservableVector & observables,
+                  const RootUtil::CStringVector & coefNames,
+                  const ModelCompare::ModelFile & targetFile, const ParamVector & targetParam,
+                  const ModelCompare::ModelFile & sourceFile, const ParamVector & sourceParam );
 
 ////////////////////////////////////////////////////////////////////////////////
 

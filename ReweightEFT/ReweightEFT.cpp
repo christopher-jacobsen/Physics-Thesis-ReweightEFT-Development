@@ -118,8 +118,11 @@ void FillHistO2divS2_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVerte
 
 
 ////////////////////////////////////////////////////////////////////////////////
-void LoadCoefHistData( const ModelCompare::ModelFile & eventFile, const ModelCompare::ObservableVector & observables,
+void LoadCoefHistData( // inputs:
+                       const ModelCompare::ObservableVector & observables,
                        const CStringVector & coefNames, const std::vector<double> & coefEval,
+                       const ModelCompare::ModelFile & eventFile,
+                       // outputs:
                        TH1DVector & eventData, std::vector<TH1DVector> & coefHists )
 {
     eventData.clear();
@@ -246,13 +249,6 @@ void CalcEvalVector( const CStringVector & coefNames, const ParamVector & params
 
         evals.push_back( itrEval->second );
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void ScaleHistToLuminosity( double luminosity, const TH1DVector & hists, const ModelCompare::ModelFile & eventFile, bool bApplyCrossSectionError = false )
-{
-    RootUtil::ScaleHistToLuminosity( luminosity, hists, eventFile.crossSectionEvents, eventFile.crossSection,
-                                     eventFile.crossSectionError, bApplyCrossSectionError );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -410,10 +406,66 @@ TH1D * ReweightHist( const TH1D & sourceData, const ConstTH1DVector & sourceCoef
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVector & observables,
-                  const ModelCompare::ModelFile & sourceFile, const ModelCompare::ModelFile & targetFile,
-                  const ParamVector &             sourceParam, const ParamVector &            targetParam,
-                  const CStringVector & coefNames )
+void LoadReweightFiles( // inputs:
+                        const ModelCompare::ObservableVector & observables,
+                        const CStringVector & coefNames,
+                        const ModelCompare::ModelFile & targetFile,
+                        const ModelCompare::ModelFile & sourceFile, const ParamVector & sourceParam,
+                        // outputs:
+                        TH1DVector &                targetData,     // targetData[observable]
+                        TH1DVector &                sourceData,     // sourceData[observable]
+                        std::vector<TH1DVector>  &  sourceCoefs,    // sourceCoefs[observable][coefficient]
+                        std::vector<double> &       sourceEval      // sourceEval[coefficient]
+                        )
+{
+    // load target data
+
+    {
+        std::vector<TH1DVector> histData;
+        ModelCompare::LoadHistData( { targetFile }, observables, histData );
+
+        targetData = histData[0];
+
+        // scale to 1 fb^1
+        ModelCompare::ScaleHistToLuminosity( 1.0, targetData, targetFile );
+
+        LogMsgHistUnderOverflow(    ToConstTH1DVector(targetData) );
+        LogMsgHistEffectiveEntries( ToConstTH1DVector(targetData) );
+    }
+
+    // load source data and reweight coefficients
+
+    CalcEvalVector( coefNames, sourceParam, sourceEval );
+
+    {
+        LoadCoefHistData( observables, coefNames, sourceEval, sourceFile,  // inputs
+                          sourceData, sourceCoefs );                       // outputs
+
+        // process sourceData
+        {
+            ModelCompare::ScaleHistToLuminosity( 1, sourceData, sourceFile );  // scale to 1 fb^-1
+
+            LogMsgHistUnderOverflow(    ToConstTH1DVector(sourceData) );
+            LogMsgHistEffectiveEntries( ToConstTH1DVector(sourceData) );
+        }
+
+        // process sourceCoefs
+
+        for (const auto & coefData : sourceCoefs)
+        {
+            ModelCompare::ScaleHistToLuminosity( 1, coefData, sourceFile );   // scale to 1 fb^-1
+
+            LogMsgHistEffectiveEntries( ToConstTH1DVector(coefData) );
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void ReweightEFT( const char * outputFileName,
+                  const ModelCompare::ObservableVector & observables,
+                  const CStringVector & coefNames,
+                  const ModelCompare::ModelFile & targetFile, const ParamVector & targetParam,
+                  const ModelCompare::ModelFile & sourceFile, const ParamVector & sourceParam )
 {
     // disable automatic histogram addition to current directory
     TH1::AddDirectory(kFALSE);
@@ -430,56 +482,24 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
         ThrowError( std::invalid_argument( outputFileName ) );
     }
 
-    // load target data
+    // load input histograms
 
-    TH1DVector targetData; // targetData[observable]
-    {
-        std::vector<TH1DVector> histData;
-        ModelCompare::LoadHistData( { targetFile }, observables, histData );
-
-        targetData = histData[0];
-
-        // scale to 1 fb^1
-        ScaleHistToLuminosity( 1.0, targetData, targetFile );
-
-        LogMsgHistUnderOverflow(    ToConstTH1DVector(targetData) );
-        LogMsgHistEffectiveEntries( ToConstTH1DVector(targetData) );
-
-        WriteHists( upOutputFile.get(), targetData );   // output file takes ownership of histograms
-    }
-
-    // load source data and reweight coefficients
-
-    std::vector<double> sourceEval;
-    CalcEvalVector( coefNames, sourceParam, sourceEval );
-
+    TH1DVector              targetData;     // targetData[observable]
     TH1DVector              sourceData;     // sourceData[observable]
     std::vector<TH1DVector> sourceCoefs;    // sourceCoefs[observable][coefficient]
-    {
-        LoadCoefHistData( sourceFile, observables, coefNames, sourceEval, sourceData, sourceCoefs );
+    std::vector<double>     sourceEval;     // sourceEval[coefficient]
 
-        // process sourceData
-        {
-            ScaleHistToLuminosity( 1, sourceData, sourceFile );  // scale to 1 fb^-1
+    LoadReweightFiles( observables, coefNames, targetFile, sourceFile, sourceParam, // inputs
+                       targetData, sourceData, sourceCoefs, sourceEval );           // outputs
 
-            LogMsgHistUnderOverflow(    ToConstTH1DVector(sourceData) );
-            LogMsgHistEffectiveEntries( ToConstTH1DVector(sourceData) );
+    // write input hists
 
-            WriteHists( upOutputFile.get(), sourceData );   // output file takes ownership of histograms
-        }
+    WriteHists( upOutputFile.get(), targetData );   // output file takes ownership of histograms
+    WriteHists( upOutputFile.get(), sourceData );   // output file takes ownership of histograms
 
-        // process sourceCoefs
-
-        for (const auto & coefData : sourceCoefs)
-        {
-            ScaleHistToLuminosity( 1, coefData, sourceFile );   // scale to 1 fb^-1
-
-            LogMsgHistEffectiveEntries( ToConstTH1DVector(coefData) );
-
-            // uncomment to save coefficent hists to file
-            // WriteHists( upOutputFile.get(), coefData );  // output file takes ownership of histograms
-        }
-    }
+    // uncomment to save coefficent hists to file
+    //  for (const auto & coefData : sourceCoefs)
+    //      WriteHists( upOutputFile.get(), coefData );  // output file takes ownership of histograms
 
     // reweight source to target
 
