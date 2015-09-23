@@ -249,82 +249,11 @@ void CalcEvalVector( const CStringVector & coefNames, const ParamVector & params
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void ScaleToLuminosity( double luminosity, const TH1DVector & hists, const ModelCompare::ModelFile & eventFile, bool bApplyCrossSectionError = false )
+void ScaleHistToLuminosity( double luminosity, const TH1DVector & hists, const ModelCompare::ModelFile & eventFile, bool bApplyCrossSectionError = false )
 {
-    double scale = luminosity * eventFile.crossSection * 1000 / eventFile.crossSectionEvents;
-
-    for (TH1D * pHist : hists)
-    {
-        LogMsgInfo( "Scaling %hs with %g", FMT_HS(pHist->GetName()), FMT_F(scale) );
-
-        pHist->Scale( scale );
-
-        if (bApplyCrossSectionError)
-        {
-            double relError = eventFile.crossSectionError / eventFile.crossSection;
-
-            for (Int_t bin = 0; bin <= pHist->GetNbinsX() + 1; ++bin)
-            {
-                Double_t binContent = pHist->GetBinContent(bin);
-                Double_t addError   = binContent * relError;
-
-                Double_t binError   = pHist->GetBinError(bin);
-                Double_t newError   = std::sqrt( binError * binError + addError * addError );
-
-                pHist->SetBinError( bin, newError );
-            }
-
-            pHist->ResetStats();  // force recalculation of sumw2
-        }
-    }
+    RootUtil::ScaleHistToLuminosity( luminosity, hists, eventFile.crossSectionEvents, eventFile.crossSection,
+                                     eventFile.crossSectionError, bApplyCrossSectionError );
 }
-
-#if 0
-////////////////////////////////////////////////////////////////////////////////
-void TrimHistNearZero( TH1D & hist )
-{
-    //const Double_t epsilon = std::numeric_limits<Double_t>::epsilon();
-
-    bool bTrimmed = false;
-
-    Int_t nBins = hist.GetNbinsX();
-    for (Int_t bin = 0; bin <= nBins + 1; ++bin)  // include under/overflow bins
-    {
-        Double_t value = std::abs( hist.GetBinContent(bin) );  // handle both positive & negative
-        if ((value > 0) && (value < 1))
-        {
-            Double_t error       = hist.GetBinError(bin);
-            Double_t upperSigma5 = value + 5 * error;
-            Double_t lowerSigma5 = value - 5 * error;
-
-            // if (value + 5 sigma < 1) && (value - 5sigma < 0))
-            if ((upperSigma5 < 1) && (lowerSigma5 < 0))
-            {
-                // extremely unlikely this is a 1 and highly likely this is a zero
-
-                LogMsgInfo( "%hs setting bin %i: %g (±%g) to 0", FMT_HS(hist.GetName()), FMT_I(bin), FMT_F(value), FMT_F(error) );
-
-                hist.SetBinContent( bin, 0 );
-                hist.SetBinError(   bin, 0 );
-                bTrimmed = true;
-            }
-        }
-    }
-
-    if (bTrimmed)
-        hist.ResetStats();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void TrimHistNearZero( const TH1DVector & hists )
-{
-    for (TH1D * pHist : hists)
-    {
-        if (pHist)
-            TrimHistNearZero( *pHist );
-    }
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 TH1D * CreateReweightHist( const ConstTH1DVector & coefData, const std::vector<double> & coefEval,
@@ -511,7 +440,7 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
         targetData = histData[0];
 
         // scale to 1 fb^1
-        ScaleToLuminosity( 1.0, targetData, targetFile );
+        ScaleHistToLuminosity( 1.0, targetData, targetFile );
 
         LogMsgHistUnderOverflow(    ToConstTH1DVector(targetData) );
         LogMsgHistEffectiveEntries( ToConstTH1DVector(targetData) );
@@ -531,7 +460,7 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
 
         // process sourceData
         {
-            ScaleToLuminosity( 1, sourceData, sourceFile );  // scale to 1 fb^-1
+            ScaleHistToLuminosity( 1, sourceData, sourceFile );  // scale to 1 fb^-1
 
             LogMsgHistUnderOverflow(    ToConstTH1DVector(sourceData) );
             LogMsgHistEffectiveEntries( ToConstTH1DVector(sourceData) );
@@ -543,7 +472,7 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
 
         for (const auto & coefData : sourceCoefs)
         {
-            ScaleToLuminosity( 1, coefData, sourceFile );   // scale to 1 fb^-1
+            ScaleHistToLuminosity( 1, coefData, sourceFile );   // scale to 1 fb^-1
 
             LogMsgHistEffectiveEntries( ToConstTH1DVector(coefData) );
 
