@@ -327,7 +327,8 @@ void TrimHistNearZero( const TH1DVector & hists )
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-TH1D * CreateReweightHist( const ConstTH1DVector & coefData, const std::vector<double> & coefEval )
+TH1D * CreateReweightHist( const ConstTH1DVector & coefData, const std::vector<double> & coefEval,
+                           const char * name = nullptr, const char * title = nullptr )
 {
     TH1D * pHist = (TH1D *)coefData[0]->Clone();    // polymorphic clone
     pHist->SetDirectory( nullptr);                  // ensure not owned by any directory
@@ -339,31 +340,28 @@ TH1D * CreateReweightHist( const ConstTH1DVector & coefData, const std::vector<d
         pHist->Add( coefData[c], coefEval[c] );
     }
 
-    return pHist;
-}
+    // set name and title
+    {
+        std::string sName  = "RW_"       + std::string(pHist->GetName());
+        std::string sTitle = "Reweight " + std::string(pHist->GetTitle());
 
-////////////////////////////////////////////////////////////////////////////////
-TH1D * ConvertTProfileToTH1D( TH1D * pProfile, bool bDeleteProfile )
-{
-    if (!pProfile->InheritsFrom(TProfile::Class()))
-        return pProfile;
-
-    TH1D * pHist = ((TProfile *)pProfile)->ProjectionX();
-
-    if (bDeleteProfile)
-        delete pProfile;
+        pHist->SetName(  name  && name[0]  ? name  : sName.c_str()  );
+        pHist->SetTitle( title && title[0] ? title : sTitle.c_str() );
+    }
 
     return pHist;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-TH1D * CreateReweightFactor( const ConstTH1DVector & coefData, const std::vector<double> & evalNum, const std::vector<double> & evalDen, bool bClearError = false )
+TH1D * CreateReweightFactor( const ConstTH1DVector & coefData, const std::vector<double> & evalNum, const std::vector<double> & evalDen,
+                             bool bClearError = false,
+                             const char * name = nullptr, const char * title = nullptr )
 {
     TH1D * pHistNum = CreateReweightHist( coefData, evalNum );  // can be TH1D or TProfile
     TH1D * pHistDen = CreateReweightHist( coefData, evalDen );  // can be TH1D or TProfile
 
-    pHistNum = ConvertTProfileToTH1D( pHistNum, true );
-    pHistDen = ConvertTProfileToTH1D( pHistDen, true );
+    pHistNum = ConvertTProfileToTH1D( pHistNum, true );  // also delete old pHistNum
+    pHistDen = ConvertTProfileToTH1D( pHistDen, true );  // also delete old pHistDen
 
     pHistNum->Divide( pHistDen );
 
@@ -371,13 +369,22 @@ TH1D * CreateReweightFactor( const ConstTH1DVector & coefData, const std::vector
 
     if (bClearError)
     {
-        Int_t nBins = pHistNum->GetNbinsX();
-        for (Int_t bin = 0; bin <= nBins + 1; ++bin)
+        Int_t nSize = pHistNum->GetSize();
+        for (Int_t bin = 0; bin < nSize; ++bin)  // include under/overflow bins
         {
             pHistNum->SetBinError(bin, 0);
         }
 
         pHistNum->ResetStats();    // force recalculation of sumw2
+    }
+
+    // set name and title
+    {
+        std::string sName  = "RWF_" + std::string(coefData[0]->GetName());
+        std::string sTitle = "Reweight factor " + std::string(coefData[0]->GetTitle());
+
+        pHistNum->SetName(  name  && name[0]  ? name  : sName.c_str()  );
+        pHistNum->SetTitle( title && title[0] ? title : sTitle.c_str() );
     }
 
     return pHistNum;
@@ -444,6 +451,36 @@ void LogMsgHistEffectiveEntries( const ConstTH1DVector & hists )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+TH1D * ReweightHist( const TH1D & sourceData, const ConstTH1DVector & sourceCoefs,
+                     const std::vector<double> & sourceEval, const std::vector<double> & targetEval,
+                     const char * name = nullptr, const char * title = nullptr )
+{
+    // create target histogram
+
+    TH1D * pTarget = (TH1D *)sourceData.Clone();   // polymorphic clone
+    pTarget->SetDirectory( nullptr );              // ensure not owned by any directory
+
+    // set name and title
+    {
+        std::string sName  = "RW_"       + std::string(pTarget->GetName());
+        std::string sTitle = "Reweight " + std::string(pTarget->GetTitle());
+
+        pTarget->SetName(  name  && name[0]  ? name  : sName.c_str()  );
+        pTarget->SetTitle( title && title[0] ? title : sTitle.c_str() );
+    }
+
+    // get the reweight factor, with errors zeroed
+    std::unique_ptr<TH1D> upReweightFactor( CreateReweightFactor( sourceCoefs, targetEval, sourceEval, true ) );
+
+    ApplyReweightFactor( *pTarget, *upReweightFactor );
+
+    LogMsgHistEffectiveEntries(*upReweightFactor);
+    LogMsgHistEffectiveEntries(*pTarget);
+
+    return pTarget;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVector & observables,
                   const ModelCompare::ModelFile & sourceFile, const ModelCompare::ModelFile & targetFile,
                   const ParamVector &             sourceParam, const ParamVector &            targetParam,
@@ -451,6 +488,10 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
 {
     // disable automatic histogram addition to current directory
     TH1::AddDirectory(kFALSE);
+    // enable automatic sumw2 for every histogram
+    TH1::SetDefaultSumw2(kTRUE);
+
+    // ------
 
     LogMsgInfo( "Output file: %hs", FMT_HS(outputFileName) );
     std::unique_ptr<TFile> upOutputFile( new TFile( outputFileName, "RECREATE" ) );
@@ -472,10 +513,10 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
         // scale to 1 fb^1
         ScaleToLuminosity( 1.0, targetData, targetFile );
 
-        LogMsgHistUnderOverflow( ToConstTH1DVector(targetData) );
+        LogMsgHistUnderOverflow(    ToConstTH1DVector(targetData) );
         LogMsgHistEffectiveEntries( ToConstTH1DVector(targetData) );
 
-        WriteHists( upOutputFile.get(), targetData );  // output file takes ownership of histograms
+        WriteHists( upOutputFile.get(), targetData );   // output file takes ownership of histograms
     }
 
     // load source data and reweight coefficients
@@ -483,45 +524,33 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
     std::vector<double> sourceEval;
     CalcEvalVector( coefNames, sourceParam, sourceEval );
 
-    TH1DVector              sourceData;         // sourceData[observable]
-    std::vector<TH1DVector> reweightCoefData;   // reweightCoefData[observable][coefficient]
+    TH1DVector              sourceData;     // sourceData[observable]
+    std::vector<TH1DVector> sourceCoefs;    // sourceCoefs[observable][coefficient]
     {
-        LoadCoefHistData( sourceFile, observables, coefNames, sourceEval, sourceData, reweightCoefData );
+        LoadCoefHistData( sourceFile, observables, coefNames, sourceEval, sourceData, sourceCoefs );
 
         // process sourceData
         {
             ScaleToLuminosity( 1, sourceData, sourceFile );  // scale to 1 fb^-1
 
-            LogMsgHistUnderOverflow( ToConstTH1DVector(sourceData) );
+            LogMsgHistUnderOverflow(    ToConstTH1DVector(sourceData) );
             LogMsgHistEffectiveEntries( ToConstTH1DVector(sourceData) );
 
-            WriteHists( upOutputFile.get(), sourceData );
+            WriteHists( upOutputFile.get(), sourceData );   // output file takes ownership of histograms
         }
 
-        // process reweightCoefData
+        // process sourceCoefs
 
-        for (const auto & coefData : reweightCoefData)
+        for (const auto & coefData : sourceCoefs)
         {
             ScaleToLuminosity( 1, coefData, sourceFile );   // scale to 1 fb^-1
 
             LogMsgHistEffectiveEntries( ToConstTH1DVector(coefData) );
 
             // uncomment to save coefficent hists to file
-            // WriteHists( upOutputFile.get(), coefData );
+            // WriteHists( upOutputFile.get(), coefData );  // output file takes ownership of histograms
         }
     }
-
-    /*
-    // reweight source to source
-
-    TH1DVector reweightSource;
-
-    for ( const TH1DVector & coefData : reweightCoefData )
-    {
-        TH1D * pHist = CreateReweightHist( ToConstTH1DVector(coefData), sourceEval );
-        reweightSource.push_back( pHist );
-    }
-    */
 
     // reweight source to target
 
@@ -530,52 +559,20 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
 
     for (size_t obsIndex = 0; obsIndex < observables.size(); ++obsIndex)
     {
-        const ConstTH1DVector & coefData = ToConstTH1DVector( reweightCoefData[obsIndex] );
+        LogMsgInfo( "\n****** Reweigting %hs to %hs for %hs ******\n",
+                    FMT_HS(sourceFile.modelTitle), FMT_HS(targetFile.modelTitle),
+                    FMT_HS(observables[obsIndex].title) );
 
-        // get the reweight factor, with errors zeroed
-        std::unique_ptr<TH1D> upReweightFactor( CreateReweightFactor( coefData, targetEval,  sourceEval, true ) );
+        TH1D * pReweightSource = ReweightHist( *sourceData[obsIndex], ToConstTH1DVector( sourceCoefs[obsIndex] ),
+                                               sourceEval, targetEval );
 
-        std::unique_ptr<TH1D> upReweightTarget( (TH1D *)sourceData[obsIndex]->Clone() );    // polymorphic clone
-        upReweightTarget->SetDirectory( nullptr );                                          // ensure not owned by any directory
-
-        ApplyReweightFactor( *upReweightTarget, *upReweightFactor );
-
-        //TH1D * pOldReweight = CreateReweightHist( coefData, targetEval );
-
-        LogMsgInfo( "reweightFactor:" );
-        LogMsgHistEffectiveEntries(*upReweightFactor);
-
-        LogMsgInfo( "reweightTarget:" );
-        LogMsgHistEffectiveEntries(*upReweightTarget);
+        WriteHists( upOutputFile.get(), { pReweightSource } );  // output file takes ownership of histograms
 
         /*
         if (obsIndex == 0)
         {
-            TH1D *  pHist   = nullptr;
-            Int_t   bin     = 221;
-
-            pHist = sourceData[obsIndex];
-            LogMsgInfo( "%hs bin %i: %g (±%g)", FMT_HS(pHist->GetName()), FMT_I(bin), FMT_F(pHist->GetBinContent(bin)), FMT_F(pHist->GetBinError(bin)) );
-
-            pHist = upReweightFactor.get();
-            LogMsgInfo( "%hs bin %i: %g (±%g)", FMT_HS(pHist->GetName()), FMT_I(bin), FMT_F(pHist->GetBinContent(bin)), FMT_F(pHist->GetBinError(bin)) );
-        }
-        */
-
-        // TODO: write reweight target (needs name and title)
-
-        //LogMsgInfo( "oldReweightTarget:" );
-        //LogMsgHistEffectiveEntries(*pOldReweight);
-
-        ConstTH1DVector                 obsData = { targetData[obsIndex], upReweightTarget.get() };
-        TH1DVector                      obsComp;
-        ModelCompare::ModelFileVector   models = { targetFile, sourceFile };
-
-        /*
-        if (obsIndex == 0)
-        {
-            const TH1D & target   = *obsData[0];
-            const TH1D & reweight = *obsData[1];
+            const TH1D & target   = *targetData[obsIndex];
+            const TH1D & reweight = *pReweightSource;
 
             LogMsgInfo( "--------- target -----------" );
             for (Int_t i = 0; i <= target.GetNbinsX() + 1; ++i)
@@ -593,6 +590,16 @@ void ReweightEFT( const char * outputFileName, const ModelCompare::ObservableVec
             }
         }
         */
+
+        std::string reweightName  = "RW_"       + std::string(sourceFile.modelName);
+        std::string reweightTitle = "Reweight " + std::string(sourceFile.modelTitle);
+
+        ModelCompare::ModelFileVector   models  = { targetFile,           sourceFile      };
+        ConstTH1DVector                 obsData = { targetData[obsIndex], pReweightSource };
+        TH1DVector                      obsComp;
+
+        models[1].modelName  = reweightName.c_str();
+        models[1].modelTitle = reweightTitle.c_str();
 
         ModelCompare::CalculateCompareHists( observables[obsIndex], obsData, obsComp, models, { kBlue, kRed } );
 
