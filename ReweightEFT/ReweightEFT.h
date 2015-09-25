@@ -38,6 +38,13 @@ void FillHistOpt(   TH1D & hist, double weight, const HepMC::GenVertex & signal,
 void FillHistOpt_vs_sqrtS(     TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
 void FillHistO2divS2_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
 
+////////////////////////////////////////////////////////////////////////////////
+
+void CalcEvalVector( const RootUtil::CStringVector & coefNames, const ParamVector & params, std::vector<double> & evals );
+
+TH1D * ReweightHist( const TH1D & sourceData, const RootUtil::ConstTH1DVector & sourceCoefs,
+                     const std::vector<double> & sourceEval, const std::vector<double> & targetEval,
+                     const char * name = nullptr, const char * title = nullptr );
 
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -378,7 +378,7 @@ void LogMsgHistEffectiveEntries( const ConstTH1DVector & hists )
 ////////////////////////////////////////////////////////////////////////////////
 TH1D * ReweightHist( const TH1D & sourceData, const ConstTH1DVector & sourceCoefs,
                      const std::vector<double> & sourceEval, const std::vector<double> & targetEval,
-                     const char * name = nullptr, const char * title = nullptr )
+                     const char * name /*= nullptr*/, const char * title /*= nullptr*/ )
 {
     // create target histogram
 
@@ -399,8 +399,8 @@ TH1D * ReweightHist( const TH1D & sourceData, const ConstTH1DVector & sourceCoef
 
     ApplyReweightFactor( *pTarget, *upReweightFactor );
 
-    LogMsgHistEffectiveEntries(*upReweightFactor);
-    LogMsgHistEffectiveEntries(*pTarget);
+    //LogMsgHistEffectiveEntries(*upReweightFactor);
+    //LogMsgHistEffectiveEntries(*pTarget);
 
     return pTarget;
 }
