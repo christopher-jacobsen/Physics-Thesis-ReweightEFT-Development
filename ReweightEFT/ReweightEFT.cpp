@@ -415,7 +415,9 @@ void LoadReweightFiles( // inputs:
                         TH1DVector &                targetData,     // targetData[observable]
                         TH1DVector &                sourceData,     // sourceData[observable]
                         std::vector<TH1DVector>  &  sourceCoefs,    // sourceCoefs[observable][coefficient]
-                        std::vector<double> &       sourceEval      // sourceEval[coefficient]
+                        std::vector<double> &       sourceEval,     // sourceEval[coefficient]
+                        TH1DVector &                rawTargetData,  // rawTargetData[observable]
+                        TH1DVector &                rawSourceData   // rawSourceData[observable]
                         )
 {
     // load target data
@@ -425,6 +427,15 @@ void LoadReweightFiles( // inputs:
         ModelCompare::LoadHistData( { targetFile }, observables, histData );
 
         targetData = histData[0];
+
+        // copy targetData to rawTargetData before modifications
+        for (const TH1D * pHist : targetData)
+        {
+            TH1D * pRawHist = (TH1D *)pHist->Clone();
+            pRawHist->SetDirectory( nullptr );
+            pRawHist->SetName( ("raw_" + std::string(pRawHist->GetName())).c_str() );
+            rawTargetData.push_back( pRawHist );
+        }
 
         // scale to 1 fb^1
         ModelCompare::ScaleHistToLuminosity( 1.0, targetData, targetFile );
@@ -440,6 +451,15 @@ void LoadReweightFiles( // inputs:
     {
         LoadCoefHistData( observables, coefNames, sourceEval, sourceFile,  // inputs
                           sourceData, sourceCoefs );                       // outputs
+
+        // copy sourceData to rawSourceData before modifications
+        for (const TH1D * pHist : sourceData)
+        {
+            TH1D * pRawHist = (TH1D *)pHist->Clone();
+            pRawHist->SetDirectory( nullptr );
+            pRawHist->SetName( ("raw_" + std::string(pRawHist->GetName())).c_str() );
+            rawSourceData.push_back( pRawHist );
+        }
 
         // process sourceData
         {
@@ -488,9 +508,12 @@ void ReweightEFT( const char * outputFileName,
     TH1DVector              sourceData;     // sourceData[observable]
     std::vector<TH1DVector> sourceCoefs;    // sourceCoefs[observable][coefficient]
     std::vector<double>     sourceEval;     // sourceEval[coefficient]
+    TH1DVector              rawTargetData;  // rawTargetData[observable]
+    TH1DVector              rawSourceData;  // rawSourceData[observable]
 
     LoadReweightFiles( observables, coefNames, targetFile, sourceFile, sourceParam, // inputs
-                       targetData, sourceData, sourceCoefs, sourceEval );           // outputs
+                       targetData, sourceData, sourceCoefs, sourceEval,             // outputs
+                       rawTargetData, rawSourceData );
 
     // write input hists
 
@@ -543,8 +566,9 @@ void ReweightEFT( const char * outputFileName,
         std::string reweightName  = "RW_"       + std::string(sourceFile.modelName);
         std::string reweightTitle = "Reweight " + std::string(sourceFile.modelTitle);
 
-        ModelCompare::ModelFileVector   models  = { targetFile,           sourceFile      };
-        ConstTH1DVector                 obsData = { targetData[obsIndex], pReweightSource };
+        ModelCompare::ModelFileVector   models  = { targetFile,              sourceFile              };
+        ConstTH1DVector                 obsData = { targetData[obsIndex],    pReweightSource         };
+        ConstTH1DVector                 rawData = { rawTargetData[obsIndex], rawSourceData[obsIndex] };
         TH1DVector                      obsComp;
 
         models[1].modelName  = reweightName.c_str();
@@ -558,7 +582,7 @@ void ReweightEFT( const char * outputFileName,
             std::string figName  = "fig_" + std::string(obsComp[0]->GetName());
             std::string figTitle = obsComp[0]->GetTitle();
 
-            ModelCompare::WriteCompareFigure( figName.c_str(), figTitle.c_str(), obsData, ToConstTH1DVector(obsComp), { kBlue, kRed } );
+            ModelCompare::WriteCompareFigure( figName.c_str(), figTitle.c_str(), obsData, ToConstTH1DVector(obsComp), { kBlue, kRed }, rawData );
         }
     }
 
