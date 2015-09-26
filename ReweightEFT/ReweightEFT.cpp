@@ -357,25 +357,6 @@ void ApplyReweightFactor( TH1D & target, const TH1D & reweightFactor )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void LogMsgHistEffectiveEntries( const TH1D & hist )
-{
-    LogMsgInfo( "%hs: entries = %g, eff. entries = %g, sum bins = %g",
-        FMT_HS(hist.GetName()),
-        FMT_F(hist.GetEntries()), FMT_F(hist.GetEffectiveEntries()),
-        FMT_F(hist.GetSumOfWeights()) );
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void LogMsgHistEffectiveEntries( const ConstTH1DVector & hists )
-{
-    for (const TH1D * pHist : hists)
-    {
-        if (pHist)
-            LogMsgHistEffectiveEntries( *pHist );
-    }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 TH1D * ReweightHist( const TH1D & sourceData, const ConstTH1DVector & sourceCoefs,
                      const std::vector<double> & sourceEval, const std::vector<double> & targetEval,
                      const char * name /*= nullptr*/, const char * title /*= nullptr*/ )
