@@ -30,6 +30,14 @@ namespace ReweightEFT
 {
 
 ////////////////////////////////////////////////////////////////////////////////
+
+// gain access to TProfile fBinEntries
+struct MyProfile : public TProfile
+{
+    using TProfile::fBinEntries;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 double GetObsSqrtS( const HepMC::GenVertex & signal )
 {
     TLorentzVector total;
@@ -263,14 +271,6 @@ void CalcEvalVector( const CStringVector & coefNames, const ParamVector & params
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-
-// gain access to TProfile fBinEntries
-struct MyProfile : public TProfile
-{
-    using TProfile::fBinEntries;
-};
-
-////////////////////////////////////////////////////////////////////////////////
 void HistReweightAdd( TH1D & hist, const TH1D & other, double cf )
 {
     // This method should be used instead of TH1D::Add or TProfile::Add for adding
@@ -412,18 +412,10 @@ void ValidateReweightHist( const TH1D & hist )
     for (Int_t bin = 0; bin < nSize; ++bin)
     {
         if (sumw[bin] < 0)
-        {
-            char what[200];
-            sprintf( what, "%s: negative sumw of %g in bin %i", FMT_HS(hist.GetName()), FMT_F(sumw[bin]), FMT_I(bin) );
-            ThrowError( what );
-        }
+            ThrowError( "%s: negative sumw of %g in bin %i", FMT_HS(hist.GetName()), FMT_F(sumw[bin]), FMT_I(bin) );
 
         if (sumw2[bin] < 0)
-        {
-            char what[200];
-            sprintf( what, "%s: negative sumw2 of %g in bin %i", FMT_HS(hist.GetName()), FMT_F(sumw[bin]), FMT_I(bin) );
-            ThrowError( what );
-        }
+            ThrowError( "%s: negative sumw2 of %g in bin %i", FMT_HS(hist.GetName()), FMT_F(sumw[bin]), FMT_I(bin) );
     }
 }
 
@@ -443,15 +435,6 @@ TH1D * CreateReweightHist( const ConstTH1DVector & coefData, const std::vector<d
         pHist->SetTitle( title && title[0] ? title : sTitle.c_str() );
     }
 
-    /* BUG: Add behaves undersirably with TProfile
-    pHist->Scale( coefEval[0] );
-
-    for (size_t c = 1; c < coefEval.size(); ++c)
-    {
-        pHist->Add( coefData[c], coefEval[c] );
-    }
-    */
-
     pHist->Reset("M");  // clear everything, including minimum/maximum
 
     // We desire sumw2 to be enabled for the reweighted result.
@@ -470,123 +453,16 @@ TH1D * CreateReweightHist( const ConstTH1DVector & coefData, const std::vector<d
     // validate reweight histogram
     ValidateReweightHist(*pHist);
 
-    LogMsgHistEffectiveEntries(*pHist);
+    //LogMsgHistEffectiveEntries(*pHist);
 
     return pHist;
 }
-
-#if OLD_BUGGY
-////////////////////////////////////////////////////////////////////////////////
-TH1D * CreateReweightFactor( const ConstTH1DVector & coefData, const std::vector<double> & evalNum, const std::vector<double> & evalDen,
-                             bool bClearError = false,
-                             const char * name = nullptr, const char * title = nullptr )
-{
-    TH1D * pHistNum = CreateReweightHist( coefData, evalNum );  // can be TH1D or TProfile
-    TH1D * pHistDen = CreateReweightHist( coefData, evalDen );  // can be TH1D or TProfile
-
-    pHistNum = ConvertTProfileToTH1D( pHistNum, true );  // also delete old pHistNum
-    pHistDen = ConvertTProfileToTH1D( pHistDen, true );  // also delete old pHistDen
-
-    pHistNum->Divide( pHistDen );
-
-    delete pHistDen;
-
-    if (bClearError)
-    {
-        Int_t nSize = pHistNum->GetSize();
-        for (Int_t bin = 0; bin < nSize; ++bin)  // include under/overflow bins
-        {
-            pHistNum->SetBinError(bin, 0);
-        }
-
-        pHistNum->ResetStats();    // force recalculation of sumw2
-    }
-
-    // set name and title
-    {
-        std::string sName  = "RWF_" + std::string(coefData[0]->GetName());
-        std::string sTitle = "Reweight factor " + std::string(coefData[0]->GetTitle());
-
-        pHistNum->SetName(  name  && name[0]  ? name  : sName.c_str()  );
-        pHistNum->SetTitle( title && title[0] ? title : sTitle.c_str() );
-    }
-
-    return pHistNum;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-void ApplyReweightFactor( TH1D & target, const TH1D & reweightFactor )
-{
-    // Multiply each bin in target by a corresponding reweight factor.
-    // Do not use the reweight factor error to error propagate.
-    // Handle both TH1D and TProfile.
-
-    // Note: For TH1D, could use target.Multiply( reweightFactor) if errors in reweightFactor are zero.
-    //       However, this does not work for TProfile, where Multiply is not supported.
-    // Note: The following code is based upon TProfile::Scale and TH1D::Scale
-
-    //LogMsgInfo( "------ reweightFactor (before) ------" );
-    //reweightFactor.Print("all");
-
-    //LogMsgInfo( "------ target (before) ------" );
-    //LogMsgHistStats( target );
-    //target.Print("all");
-
-    Int_t nSize = reweightFactor.GetSize();  // includes under/overflow
-
-    if ((nSize != target.GetSize()) || (nSize != target.GetSumw2N()))
-        ThrowError( "ApplyReweightFactor: bins mismatch between reweight factor and target histograms." );
-
-    Double_t * targetContent = target.GetArray();
-    Double_t * targetSumw2   = target.GetSumw2()->GetArray();
-
-    for (Int_t bin = 0; bin < nSize; ++bin)  // include under/overflow
-    {
-        Double_t factor = reweightFactor.GetBinContent(bin);
-
-        // BUG: this is not proper rescaling for TProfile, where each internal sum has a different rescale factor
-
-        targetContent[bin] *= factor;
-        targetSumw2[bin]   *= factor;  // only factor not factor^2 to affect change in effective entries
-    }
-
-    target.ResetStats();
-
-    //LogMsgInfo( "------ target (after) ------" );
-    //LogMsgHistStats( target );
-    //target.Print("all");
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 TH1D * ReweightHist( const TH1D & sourceData, const ConstTH1DVector & sourceCoefs,
                      const std::vector<double> & sourceEval, const std::vector<double> & targetEval,
                      const char * name /*= nullptr*/, const char * title /*= nullptr*/ )
 {
-    /*
-    // create target histogram
-
-    TH1D * pTarget = (TH1D *)sourceData.Clone();   // polymorphic clone
-    pTarget->SetDirectory( nullptr );              // ensure not owned by any directory
-
-    // set name and title
-    {
-        std::string sName  = "RW_"       + std::string(pTarget->GetName());
-        std::string sTitle = "Reweight " + std::string(pTarget->GetTitle());
-
-        pTarget->SetName(  name  && name[0]  ? name  : sName.c_str()  );
-        pTarget->SetTitle( title && title[0] ? title : sTitle.c_str() );
-    }
-
-    // get the reweight factor, with errors zeroed
-    std::unique_ptr<TH1D> upReweightFactor( CreateReweightFactor( sourceCoefs, targetEval, sourceEval, true ) );
-
-    ApplyReweightFactor( *pTarget, *upReweightFactor );
-
-    //LogMsgHistEffectiveEntries(*upReweightFactor);
-    //LogMsgHistEffectiveEntries(*pTarget);
-    */
-
     // set name and title
     std::string sName  = "RW_"       + std::string(sourceData.GetName());
     std::string sTitle = "Reweight " + std::string(sourceData.GetTitle());

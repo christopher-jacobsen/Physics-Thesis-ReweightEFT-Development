@@ -57,7 +57,9 @@ void LoadReweightFiles( // inputs:
                         RootUtil::TH1DVector &              targetData,     // targetData[observable]
                         RootUtil::TH1DVector &              sourceData,     // sourceData[observable]
                         std::vector<RootUtil::TH1DVector> & sourceCoefs,    // sourceCoefs[observable][coefficient]
-                        std::vector<double> &               sourceEval      // sourceEval[coefficient]
+                        std::vector<double> &               sourceEval,     // sourceEval[coefficient]
+                        RootUtil::TH1DVector &              rawTargetData,  // rawTargetData[observable]
+                        RootUtil::TH1DVector &              rawSourceData   // rawSourceData[observable]
                         );
 
 void ReweightEFT( const char * outputFileName,
