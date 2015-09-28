@@ -94,6 +94,16 @@ void FillHistOpt_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVertex & 
     double opt    = GetObsOpt(   signal, coefName );
     double sqrt_s = GetObsSqrtS( signal );
 
+    /*
+    if (pProfile->FindFixBin(sqrt_s) == 88)
+    {
+        //if (strcmp(pProfile->GetName(), "EFT_all_cWWW_O1vS_F_0_0") == 0)
+        {
+            LogMsgInfo( "%hs: w=%g y=%g", FMT_HS(pProfile->GetName()), FMT_F(weight), FMT_F(opt) );
+        }
+    }
+    */
+
     pProfile->Fill( sqrt_s, opt, weight );
 }
 
@@ -151,6 +161,7 @@ void LoadCoefHistData( // inputs:
             for ( const char * coefName : coefNames )
             {
                 TH1D * pHist = obs.MakeHist( eventFile.modelName, eventFile.modelTitle, coefName, coefName );
+                pHist->Sumw2(kFALSE);  // do not use sumw2 for coefficient histograms
                 coefData.push_back(pHist);
             }
 
@@ -252,18 +263,176 @@ void CalcEvalVector( const CStringVector & coefNames, const ParamVector & params
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+
+// gain access to TProfile fBinEntries
+struct MyProfile : public TProfile
+{
+    using TProfile::fBinEntries;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+void HistReweightAdd( TH1D & hist, const TH1D & other, double cf )
+{
+    // This method should be used instead of TH1D::Add or TProfile::Add for adding
+    // reweight coefficient histograms.
+
+    // Neither TH1D::Add nor TProfile::Add change the number of effective entries,
+    // when scaling other prior to adding the result to hist.
+    // They essentially scale the weights within the sums of other.
+    //
+    // TH1D::Add:       sumw  *= cf             -> content *=  cf
+    //                  sumw2 *= cf*cf          -> error   *= |cf|
+    //                                          -> nEff    *=  1    [nEff = sumw^2/sumw2]
+    //
+    // TProfile::Add:   sumw     *=  cf         -> mean  *= sign(cf)
+    //                  sumw2    *= |cf|        -> sigma *= 1
+    //                  binEnt   *= |cf]        -> error *= 1
+    //                  binSumw2 *= |cf|*|cf|   -> nEff  *= 1       [nEff = binEnt^2/binSumw2]
+    //
+    // For example, when adding a hist to itself with cf = -1, we get:
+    //
+    // TH1D::Add:       sumw   = 0          -> content  = 0
+    //                  sumw2 *= 2          -> error   *= sqrt(2) != 0
+    //                                      -> nEff     = 0
+    //
+    // TProfile::Add:   sumw      = 0       -> mean   = 0
+    //                  sumw2    *= 2       -> sigma  = sqrt(sumw2/binEnt) != 0
+    //                  binEnt   *= 2       -> error  = sigma/sqrt(nEff)   != 0
+    //                  binSumw2 *= 2       -> nEff  *= 2
+    //
+    // The above is mathematically correct, if one wants to propagate errors.
+    // However, we want to construct a final reweighted histogram from the
+    // weighted sum of several other histograms, in such a way that the
+    // reweighted result is equivalent to the result that would have been
+    // achieved if filling the histogram in one pass.
+    //
+    // That is for when summing over event index k:
+    //      sum(w0(k))*c0 + sum(w1(k))*c1 + ... = sum(w0(k)*c0 + w1(k)*c1 + ...)
+    //
+    // So we need to implement:
+    // TH1D:        sumw  *= cf             -> content *= cf
+    //              sumw2  = |sumw|         -> error    = sqrt(nEff)
+    //                                      -> nEff     = |sumw|
+    //
+    // TProfile:    sumw     *= cf          -> mean  *= 1
+    //              sumw2    *= cf          -> sigma *= 1
+    //              binEnt   *= cf          -> error  = sigma/sqrt(nEff)
+    //              binSumw2  = |binEnt|    -> nEff   = |binEnt|
+    //
+    // Note: that anyplace a weight is not used directly (squared or absolute)
+    // that it is not possible to accomplish our goal. For example:
+    //      sum(w0(k)^2)*c0 + sum(w1(k)^2)*c1 + ... != sum((w0(k)*c0 + w1(k)*c1 + ...)^2)
+    //      sum(|w0(k)|)*c0 + sum(|w1(k)|)*c1 + ... = sum(|w0(k)*c0 + w1(k)*c1 + ...|)
+    // Thus we cannot correct sumw2 for TH1D or binSumw2 for TProfile.
+    // Fortunately we can assume that the resulting effective events is an average count,
+    // and the error is then sqrt(nEff) for TH1D and sigma/sqrt(nEff) for TProfile.
+    //
+    // Using this technique, adding a hist to itself with cf = -1 we get:
+    //
+    // TH1D:        sumw  = 0           -> content = 0
+    //              sumw2 = 0           -> error   = 0
+    //                                  -> nEff    = 0
+    //
+    // TProfile:    sumw     = 0        -> mean  = 0
+    //              sumw2    = 0        -> sigma = 0
+    //              binEnt   = 0        -> error = 0
+    //              binSumw2 = 0        -> nEff  = 0
+    //
+    // And this is what we want.
+
+    if (hist.GetSize() != other.GetSize())
+        ThrowError( "ReweightHistAdd: size mismatch in histograms" );
+
+    if ((hist.GetSize() == 0) || (cf == 0))
+        return;
+
+          MyProfile * hp = hist .InheritsFrom(TProfile::Class()) ? static_cast<      MyProfile *>(&hist)  : nullptr;
+    const MyProfile * op = other.InheritsFrom(TProfile::Class()) ? static_cast<const MyProfile *>(&other) : nullptr;
+
+    if ((hp == nullptr) != (op == nullptr))
+        ThrowError( "Cannot add TProfile to TH1D. Types must match" );
+
+    Double_t * hW  = hist.GetArray();
+    Double_t * hW2 = hist.GetSumw2()->GetArray();                       // TH1D: can be null
+    Double_t * hB  = hp ? hp->fBinEntries.GetArray()    : nullptr;
+    Double_t * hB2 = hp ? hp->GetBinSumw2()->GetArray() : nullptr;      // TProfile: can be null
+
+    const Double_t * oW  = other.GetArray();
+    const Double_t * oW2 = other.GetSumw2()->GetArray();                // TH1D: can be null
+    const Double_t * oB  = op ? op->fBinEntries.GetArray() : nullptr;
+
+    if (!hW || !oW || (hp && !(hW2 && oW2 && hB && oB)))
+        ThrowError( "ReweightHistAdd: Internal error - unexpected buffer state." );
+
+    const Int_t nSize = hist.GetSize();
+    for (Int_t bin = 0; bin < nSize; ++bin)
+    {
+        hW[bin] += oW[bin] * cf;
+
+        if (!hp)    // TH1D
+        {
+            if (hW2)
+                hW2[bin] = std::abs( hW[bin] );     // -> error = sqrt(nEff)
+        }
+        else    // TProfile
+        {
+            hW2[bin] += oW2[bin] * cf;
+             hB[bin] +=  oB[bin] * cf;
+
+            if (hB2)
+                hB2[bin] = std::abs( hB[bin] );     // -> error = sigma/sqrt(nEff)
+        }
+    }
+
+    hist.ResetStats();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void ValidateReweightHist( const TH1D & hist )
+{
+    // validate constructed reweight histogram
+    // TH1D:     non-negative sumw and sumw2
+    // TProfile: non-negative binEntries and binSumw2
+
+    const Double_t * sumw  = nullptr;
+    const Double_t * sumw2 = nullptr;
+
+    if (!hist.InheritsFrom(TProfile::Class()))
+    {
+        sumw  = hist.GetArray();
+        sumw2 = hist.GetSumw2()->GetArray();
+    }
+    else
+    {
+        sumw  = static_cast<const MyProfile &>(hist).fBinEntries.GetArray();
+        sumw2 = static_cast<const MyProfile &>(hist).GetBinSumw2()->GetArray();
+    }
+
+    const Int_t nSize = hist.GetSize();
+    for (Int_t bin = 0; bin < nSize; ++bin)
+    {
+        if (sumw[bin] < 0)
+        {
+            char what[200];
+            sprintf( what, "%s: negative sumw of %g in bin %i", FMT_HS(hist.GetName()), FMT_F(sumw[bin]), FMT_I(bin) );
+            ThrowError( what );
+        }
+
+        if (sumw2[bin] < 0)
+        {
+            char what[200];
+            sprintf( what, "%s: negative sumw2 of %g in bin %i", FMT_HS(hist.GetName()), FMT_F(sumw[bin]), FMT_I(bin) );
+            ThrowError( what );
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 TH1D * CreateReweightHist( const ConstTH1DVector & coefData, const std::vector<double> & coefEval,
                            const char * name = nullptr, const char * title = nullptr )
 {
     TH1D * pHist = (TH1D *)coefData[0]->Clone();    // polymorphic clone
     pHist->SetDirectory( nullptr);                  // ensure not owned by any directory
-
-    pHist->Scale( coefEval[0] );
-
-    for (size_t c = 1; c < coefEval.size(); ++c)
-    {
-        pHist->Add( coefData[c], coefEval[c] );
-    }
 
     // set name and title
     {
@@ -274,9 +443,39 @@ TH1D * CreateReweightHist( const ConstTH1DVector & coefData, const std::vector<d
         pHist->SetTitle( title && title[0] ? title : sTitle.c_str() );
     }
 
+    /* BUG: Add behaves undersirably with TProfile
+    pHist->Scale( coefEval[0] );
+
+    for (size_t c = 1; c < coefEval.size(); ++c)
+    {
+        pHist->Add( coefData[c], coefEval[c] );
+    }
+    */
+
+    pHist->Reset("M");  // clear everything, including minimum/maximum
+
+    // We desire sumw2 to be enabled for the reweighted result.
+    // coefData does not normally have Sumw2 set, so neither does its clone.
+    // We can enable sumw2 before or after the reweight calculation.
+    // HistReweightAdd (used below) ensures the "correct" result when sumw is enabled.
+    // Doing it before the calculation, saves on a ResetStats call,
+    // which would be necessary if enabled afterwards.
+    pHist->Sumw2(kTRUE);
+
+    for (size_t c = 0; c < coefEval.size(); ++c)
+    {
+        HistReweightAdd( *pHist, *coefData[c], coefEval[c] );   // we cannot use Add, as it gives the incorrect result
+    }
+
+    // validate reweight histogram
+    ValidateReweightHist(*pHist);
+
+    LogMsgHistEffectiveEntries(*pHist);
+
     return pHist;
 }
 
+#if OLD_BUGGY
 ////////////////////////////////////////////////////////////////////////////////
 TH1D * CreateReweightFactor( const ConstTH1DVector & coefData, const std::vector<double> & evalNum, const std::vector<double> & evalDen,
                              bool bClearError = false,
@@ -345,8 +544,10 @@ void ApplyReweightFactor( TH1D & target, const TH1D & reweightFactor )
     {
         Double_t factor = reweightFactor.GetBinContent(bin);
 
+        // BUG: this is not proper rescaling for TProfile, where each internal sum has a different rescale factor
+
         targetContent[bin] *= factor;
-        targetSumw2[bin]   *= factor * factor;
+        targetSumw2[bin]   *= factor;  // only factor not factor^2 to affect change in effective entries
     }
 
     target.ResetStats();
@@ -355,12 +556,14 @@ void ApplyReweightFactor( TH1D & target, const TH1D & reweightFactor )
     //LogMsgHistStats( target );
     //target.Print("all");
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 TH1D * ReweightHist( const TH1D & sourceData, const ConstTH1DVector & sourceCoefs,
                      const std::vector<double> & sourceEval, const std::vector<double> & targetEval,
                      const char * name /*= nullptr*/, const char * title /*= nullptr*/ )
 {
+    /*
     // create target histogram
 
     TH1D * pTarget = (TH1D *)sourceData.Clone();   // polymorphic clone
@@ -382,6 +585,29 @@ TH1D * ReweightHist( const TH1D & sourceData, const ConstTH1DVector & sourceCoef
 
     //LogMsgHistEffectiveEntries(*upReweightFactor);
     //LogMsgHistEffectiveEntries(*pTarget);
+    */
+
+    // set name and title
+    std::string sName  = "RW_"       + std::string(sourceData.GetName());
+    std::string sTitle = "Reweight " + std::string(sourceData.GetTitle());
+
+    if (!name  || !name[0])  name  = sName.c_str();
+    if (!title || !title[0]) title = sTitle.c_str();
+
+    TH1D * pTarget = CreateReweightHist( sourceCoefs, targetEval, name, title );
+
+    /*
+    LogMsgInfo("--- RW ---");
+    LogMsgHistEffectiveEntries(sourceData);
+    LogMsgHistDump(sourceData);
+    LogMsgInfo("----------");
+    LogMsgHistEffectiveEntries(*pTarget);
+    LogMsgHistDump(*pTarget);
+    LogMsgInfo("----------");
+    */
+
+    //LogMsgHistDump(*pTarget);
+    //LogMsgHistDump(*sourceCoefs[0]);
 
     return pTarget;
 }
