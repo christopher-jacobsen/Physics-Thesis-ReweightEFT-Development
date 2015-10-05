@@ -11,6 +11,7 @@
 #include "RootUtil.h"
 
 // Root includes
+#include <TStyle.h>
 #include <TFile.h>
 #include <TH1.h>
 #include <TProfile.h>
@@ -570,10 +571,19 @@ void ReweightEFT( const char * outputFileName,
                   const ModelCompare::ModelFile & targetFile, const ParamVector & targetParam,
                   const ModelCompare::ModelFile & sourceFile, const ParamVector & sourceParam )
 {
+    LogMsgInfo( "Style: %hs", FMT_HS(gStyle->GetName()) );
+
     // disable automatic histogram addition to current directory
     TH1::AddDirectory(kFALSE);
     // enable automatic sumw2 for every histogram
     TH1::SetDefaultSumw2(kTRUE);
+
+    // modify the global style
+    gStyle->SetPaperSize( TStyle::kA4 );
+    gStyle->SetTitleOffset( 1.3, "xyz" ); // increase title offsets a little more
+    gStyle->SetPadTopMargin(   0.03 );
+    gStyle->SetPadRightMargin( 0.03 );
+    gStyle->SetOptTitle( kFALSE );
 
     // ------
 
