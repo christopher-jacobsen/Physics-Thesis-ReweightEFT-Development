@@ -142,7 +142,9 @@ void LoadCoefHistData( // inputs:
                        const CStringVector & coefNames, const std::vector<double> & coefEval,
                        const ModelCompare::ModelFile & eventFile,
                        // outputs:
-                       TH1DVector & eventData, std::vector<TH1DVector> & coefHists )
+                       TH1DVector & eventData, std::vector<TH1DVector> & coefHists,
+                       // optionals:
+                       const char * cacheFileName /*= nullptr*/)
 {
     eventData.clear();
     coefHists.clear();
@@ -155,28 +157,64 @@ void LoadCoefHistData( // inputs:
 
     // create histograms
 
+    bool                    bLoadEvents = false;
+    TH1DVector              loadEvents;
+    std::vector<TH1DVector> loadCoefs;
+
     for ( const ModelCompare::Observable & obs : observables )
     {
         // create event data histograms
         {
             TH1D * pHist = obs.MakeHist( eventFile.modelName, eventFile.modelTitle );
+
+            if (ModelCompare::LoadCacheHist( cacheFileName, pHist ))
+            {
+                LogMsgInfo( "Loaded %hs from cache", FMT_HS(pHist->GetName()) );
+                loadEvents.push_back( nullptr );  // skip this histogram
+            }
+            else
+            {
+                loadEvents.push_back( pHist );
+                bLoadEvents = true;
+            }
+
             eventData.push_back( pHist );
         }
 
         // create coefficient histograms
         {
-            TH1DVector coefData;
+            TH1DVector hists;   // hists to return
+            TH1DVector load;    // hists to load
 
             for ( const char * coefName : coefNames )
             {
                 TH1D * pHist = obs.MakeHist( eventFile.modelName, eventFile.modelTitle, coefName, coefName );
                 pHist->Sumw2(kFALSE);  // do not use sumw2 for coefficient histograms
-                coefData.push_back(pHist);
+
+                if (ModelCompare::LoadCacheHist( cacheFileName, pHist ))
+                {
+                    LogMsgInfo( "Loaded %hs from cache", FMT_HS(pHist->GetName()) );
+                    load.push_back( nullptr );  // skip this histogram
+                }
+                else
+                {
+                    load.push_back( pHist );
+                    bLoadEvents = true;
+                }
+
+                hists.push_back( pHist );
             }
 
-            coefHists.push_back( coefData );
+            if (hists.size() != load.size())
+                ThrowError( std::logic_error("LoadCoefHistData: vector size mismatch") );
+
+            coefHists.push_back( hists );
+            loadCoefs.push_back( load  );
         }
     }
+
+    if ((eventData.size() != loadEvents.size()) || (coefHists.size() != loadCoefs.size()))
+        ThrowError( std::logic_error("LoadCoefHistData: vector size mismatch") );
 
     // fill histograms
 
@@ -214,22 +252,39 @@ void LoadCoefHistData( // inputs:
                 ThrowError( "Evaluation ME is zero or negative." );
         }
 
-        auto itrData    = eventData.cbegin();
-        auto itrCoefObs = coefHists.cbegin();
+        auto itrEvent   = loadEvents.cbegin();
+        auto itrCoefObs = loadCoefs.cbegin();
         for ( const ModelCompare::Observable & obs : observables )
         {
-            obs.fillFunction( **itrData++, 1, signal );
+            TH1D * pEvent = *itrEvent++;
+            if (pEvent)
+                obs.fillFunction( *pEvent, 1, signal );
 
             auto itrCoef = (*itrCoefObs++).cbegin();
             for  ( double cf : coefFactors )
             {
-                double w = cf / evalME;
-                obs.fillFunction( **itrCoef++, w, signal );
+                TH1D * pCoef = *itrCoef++;
+                if (pCoef)
+                {
+                    double w = cf / evalME;
+                    obs.fillFunction( *pCoef, w, signal );
+                }
             }
         }
     };
 
-    LoadEvents( eventFile.fileName, FillFunc );
+    if (bLoadEvents)
+    {
+        LoadEvents( eventFile.fileName, FillFunc );
+
+        if (cacheFileName && cacheFileName[0])
+        {
+            SaveHists( cacheFileName, ToConstTH1DVector(eventData) );
+
+            for (const TH1DVector & hists : coefHists)
+                SaveHists( cacheFileName, ToConstTH1DVector(hists) );
+        }
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -501,14 +556,17 @@ void LoadReweightFiles( // inputs:
                         std::vector<TH1DVector>  &  sourceCoefs,    // sourceCoefs[observable][coefficient]
                         std::vector<double> &       sourceEval,     // sourceEval[coefficient]
                         TH1DVector &                rawTargetData,  // rawTargetData[observable]
-                        TH1DVector &                rawSourceData   // rawSourceData[observable]
+                        TH1DVector &                rawSourceData,  // rawSourceData[observable]
+                        // optionals:
+                        double luminosity /*= 1.0*/,
+                        const char * cacheFilename /*= nullptr*/
                         )
 {
     // load target data
 
     {
         std::vector<TH1DVector> histData;
-        ModelCompare::LoadHistData( { targetFile }, observables, histData );
+        ModelCompare::LoadHistData( { targetFile }, observables, histData, cacheFilename );
 
         targetData = histData[0];
 
@@ -521,8 +579,7 @@ void LoadReweightFiles( // inputs:
             rawTargetData.push_back( pRawHist );
         }
 
-        // scale to 1 fb^1
-        ModelCompare::ScaleHistToLuminosity( 1.0, targetData, targetFile );
+        ModelCompare::ScaleHistToLuminosity( luminosity, targetData, targetFile );
 
         LogMsgHistUnderOverflow(    ToConstTH1DVector(targetData) );
         LogMsgHistEffectiveEntries( ToConstTH1DVector(targetData) );
@@ -533,8 +590,9 @@ void LoadReweightFiles( // inputs:
     CalcEvalVector( coefNames, sourceParam, sourceEval );
 
     {
-        LoadCoefHistData( observables, coefNames, sourceEval, sourceFile,  // inputs
-                          sourceData, sourceCoefs );                       // outputs
+        LoadCoefHistData( observables, coefNames, sourceEval, sourceFile,   // inputs
+                          sourceData, sourceCoefs,                          // outputs
+                          cacheFilename );                                  // optionals
 
         // copy sourceData to rawSourceData before modifications
         for (const TH1D * pHist : sourceData)
@@ -547,7 +605,7 @@ void LoadReweightFiles( // inputs:
 
         // process sourceData
         {
-            ModelCompare::ScaleHistToLuminosity( 1, sourceData, sourceFile );  // scale to 1 fb^-1
+            ModelCompare::ScaleHistToLuminosity( luminosity, sourceData, sourceFile );
 
             LogMsgHistUnderOverflow(    ToConstTH1DVector(sourceData) );
             LogMsgHistEffectiveEntries( ToConstTH1DVector(sourceData) );
@@ -557,7 +615,7 @@ void LoadReweightFiles( // inputs:
 
         for (const auto & coefData : sourceCoefs)
         {
-            ModelCompare::ScaleHistToLuminosity( 1, coefData, sourceFile );   // scale to 1 fb^-1
+            ModelCompare::ScaleHistToLuminosity( luminosity, coefData, sourceFile );
 
             LogMsgHistEffectiveEntries( ToConstTH1DVector(coefData) );
         }
@@ -569,7 +627,9 @@ void ReweightEFT( const char * outputFileName,
                   const ModelCompare::ObservableVector & observables,
                   const CStringVector & coefNames,
                   const ModelCompare::ModelFile & targetFile, const ParamVector & targetParam,
-                  const ModelCompare::ModelFile & sourceFile, const ParamVector & sourceParam )
+                  const ModelCompare::ModelFile & sourceFile, const ParamVector & sourceParam,
+                  double luminosity /*= 1.0*/,
+                  const char * cacheFilename /*= nullptr*/ )
 {
     LogMsgInfo( "Style: %hs", FMT_HS(gStyle->GetName()) );
 
@@ -604,9 +664,11 @@ void ReweightEFT( const char * outputFileName,
     TH1DVector              rawTargetData;  // rawTargetData[observable]
     TH1DVector              rawSourceData;  // rawSourceData[observable]
 
-    LoadReweightFiles( observables, coefNames, targetFile, sourceFile, sourceParam, // inputs
-                       targetData, sourceData, sourceCoefs, sourceEval,             // outputs
-                       rawTargetData, rawSourceData );
+    LoadReweightFiles( observables, coefNames,                              // inputs
+                       targetFile, sourceFile, sourceParam,
+                       targetData, sourceData, sourceCoefs, sourceEval,     // outputs
+                       rawTargetData, rawSourceData,
+                       luminosity, cacheFilename );                         // optionals
 
     // write input hists
 

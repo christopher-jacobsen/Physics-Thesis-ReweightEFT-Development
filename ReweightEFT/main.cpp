@@ -97,13 +97,20 @@ static const ReweightEFT::ParamVector Params_EFT_SM =
     { "ocB",   0 },
 };
 
+static const double Luminosity = 10.0;
+
 ////////////////////////////////////////////////////////////////////////////////
 int main(void)
 {
   //ReweightEFT::ReweightEFT( "reweight/EFT_all_to_self_1E4.root", Observables1, CoefNames_EFT_all, Models_1E4[1], Params_EFT_all, Models_1E4[1], Params_EFT_all );
 
-  //ReweightEFT::ReweightEFT( "reweight/EFT_all_to_SM_1E4.root", Observables1, CoefNames_EFT_all, Models_1E4[0], Params_EFT_SM, Models_1E4[1], Params_EFT_all );
-    ReweightEFT::ReweightEFT( "reweight/EFT_all_to_SM_1E6.root", Observables1, CoefNames_EFT_all, Models_1E6[0], Params_EFT_SM, Models_1E6[1], Params_EFT_all );
+//    ReweightEFT::ReweightEFT( "reweight/EFT_all_to_SM_1E4.root", Observables1, CoefNames_EFT_all,
+//                              Models_1E4[0], Params_EFT_SM, Models_1E4[1], Params_EFT_all,
+//                              Luminosity, "reweight/Cache_1E4.root" );
+
+    ReweightEFT::ReweightEFT( "reweight/EFT_all_to_SM_1E6.root", Observables1, CoefNames_EFT_all,
+                              Models_1E6[0], Params_EFT_SM, Models_1E6[1], Params_EFT_all,
+                              Luminosity, "reweight/Cache_1E6.root" );
 
     LogMsgInfo( "\nDone." );
     return 0;

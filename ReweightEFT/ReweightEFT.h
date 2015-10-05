@@ -59,14 +59,19 @@ void LoadReweightFiles( // inputs:
                         std::vector<RootUtil::TH1DVector> & sourceCoefs,    // sourceCoefs[observable][coefficient]
                         std::vector<double> &               sourceEval,     // sourceEval[coefficient]
                         RootUtil::TH1DVector &              rawTargetData,  // rawTargetData[observable]
-                        RootUtil::TH1DVector &              rawSourceData   // rawSourceData[observable]
+                        RootUtil::TH1DVector &              rawSourceData,  // rawSourceData[observable]
+                        // optionals
+                        double luminosity = 1.0,
+                        const char * cacheFilename = nullptr
                         );
 
 void ReweightEFT( const char * outputFileName,
                   const ModelCompare::ObservableVector & observables,
                   const RootUtil::CStringVector & coefNames,
                   const ModelCompare::ModelFile & targetFile, const ParamVector & targetParam,
-                  const ModelCompare::ModelFile & sourceFile, const ParamVector & sourceParam );
+                  const ModelCompare::ModelFile & sourceFile, const ParamVector & sourceParam,
+                  double luminosity = 1.0,
+                  const char * cacheFilename = nullptr );
 
 ////////////////////////////////////////////////////////////////////////////////
 
