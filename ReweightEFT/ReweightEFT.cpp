@@ -82,6 +82,39 @@ double GetObsOpt( const HepMC::GenVertex & signal, const char * coefName )
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+void GetObsOpt_vs_sqrtS( const HepMC::GenVertex & signal, double * values, size_t count, const char * coefName )
+{
+    if (count != 2)
+        ThrowError( "GetObsOpt_vs_sqrtS count must be 2" );
+
+    values[0] = GetObsSqrtS( signal );
+    values[1] = GetObsOpt(   signal, coefName );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+void GetObsOptDivSN_vs_sqrtS( const HepMC::GenVertex & signal, double * values, size_t count, const char * coefName, int order )
+{
+    if (count != 2)
+        ThrowError( "GetObsOptDivSN_vs_sqrtS count must be 2" );
+
+    double opt    = GetObsOpt(   signal, coefName );
+    double sqrt_s = GetObsSqrtS( signal );
+    double s      = sqrt_s * sqrt_s;
+    double denom  = s;
+
+    for (int i = 1; i < order; ++i)
+        denom *= s;
+
+    if (denom == 0.0)
+        ThrowError( "s is zero" );
+
+    double y = opt / denom;
+
+    values[0] = sqrt_s;
+    values[1] = y;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 void FillHistSqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal )
 {
     hist.Fill( GetObsSqrtS( signal ), weight );
@@ -117,7 +150,7 @@ void FillHistOpt_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVertex & 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-void FillHistO2divS2_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName )
+void FillHistOptDivSN_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName, int order )
 {
     TProfile * pProfile = dynamic_cast<TProfile *>( &hist );
     if (!pProfile)
@@ -125,16 +158,19 @@ void FillHistO2divS2_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVerte
 
     double opt    = GetObsOpt(   signal, coefName );
     double sqrt_s = GetObsSqrtS( signal );
-    double s2     = sqrt_s * sqrt_s * sqrt_s * sqrt_s;
+    double s      = sqrt_s * sqrt_s;
+    double denom  = s;
 
-    if (s2 == 0.0)
-        ThrowError( "s^2 is zero" );
+    for (int i = 1; i < order; ++i)
+        denom *= s;
 
-    double y = opt / s2;
+    if (denom == 0.0)
+        ThrowError( "s is zero" );
+
+    double y = opt / denom;
 
     pProfile->Fill( sqrt_s, y, weight );
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 void LoadCoefHistData( // inputs:
@@ -258,7 +294,7 @@ void LoadCoefHistData( // inputs:
         {
             TH1D * pEvent = *itrEvent++;
             if (pEvent)
-                obs.fillFunction( *pEvent, 1, signal );
+                obs.FillHist( *pEvent, 1, signal );
 
             auto itrCoef = (*itrCoefObs++).cbegin();
             for  ( double cf : coefFactors )
@@ -267,7 +303,7 @@ void LoadCoefHistData( // inputs:
                 if (pCoef)
                 {
                     double w = cf / evalME;
-                    obs.fillFunction( *pCoef, w, signal );
+                    obs.FillHist( *pCoef, w, signal );
                 }
             }
         }

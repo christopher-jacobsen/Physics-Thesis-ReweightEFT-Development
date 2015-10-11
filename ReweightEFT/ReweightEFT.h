@@ -32,11 +32,14 @@ typedef std::vector<Parameter> ParamVector;
 double GetObsSqrtS( const HepMC::GenVertex & signal );
 double GetObsOpt(   const HepMC::GenVertex & signal, const char * coefName );
 
+void GetObsOpt_vs_sqrtS(      const HepMC::GenVertex & signal, double * values, size_t count, const char * coefName );
+void GetObsOptDivSN_vs_sqrtS( const HepMC::GenVertex & signal, double * values, size_t count, const char * coefName, int order );
+
 void FillHistSqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal );
 void FillHistOpt(   TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
 
-void FillHistOpt_vs_sqrtS(     TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
-void FillHistO2divS2_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
+void FillHistOpt_vs_sqrtS(      TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName );
+void FillHistOptDivSN_vs_sqrtS( TH1D & hist, double weight, const HepMC::GenVertex & signal, const char * coefName, int order );
 
 ////////////////////////////////////////////////////////////////////////////////
 
