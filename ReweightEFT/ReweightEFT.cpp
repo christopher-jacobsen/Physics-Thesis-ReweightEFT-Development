@@ -311,7 +311,7 @@ void LoadCoefHistData( // inputs:
 
     if (bLoadEvents)
     {
-        LoadEvents( eventFile.fileName, FillFunc );
+        LoadEvents( eventFile.fileName, FillFunc, eventFile.maxLoadEvents );
 
         if (cacheFileName && cacheFileName[0])
         {
